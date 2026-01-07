@@ -98,4 +98,7 @@ export const gameActions = {
   applyTemporaryEffect: (effect: any) => useGameStore.getState().applyTemporaryEffect(effect),
   updateTemporaryEffects: () => useGameStore.getState().updateTemporaryEffects(),
   getBonfireConsumptionMultiplier: () => useGameStore.getState().getBonfireConsumptionMultiplier(),
+  setActiveSpecialAction: (action: any) => useGameStore.getState().setActiveSpecialAction(action),
+  completeSpecialAction: () => useGameStore.getState().completeSpecialAction(),
+  clearSpecialAction: () => useGameStore.getState().clearSpecialAction(),
 };

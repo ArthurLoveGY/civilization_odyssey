@@ -58,6 +58,7 @@ export interface TribeSliceState {
 export interface TechSliceState {
   researched: TechType[];
   ideas: Decimal;
+  tradition: Decimal;
   councilGround: CouncilGroundState;
 }
 

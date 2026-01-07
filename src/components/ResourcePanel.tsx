@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Apple, Trees, Shield, Users, Mountain, Lightbulb, Drumstick, Beef } from 'lucide-react';
+import { Apple, Trees, Shield, Users, Mountain, Lightbulb, Drumstick, Beef, Scroll } from 'lucide-react';
 import { useGameUI } from '../contexts/GameUIContext';
 import { ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
@@ -46,6 +46,12 @@ const RESOURCE_CONFIG = {
     icon: Lightbulb,
     color: 'text-purple-600 dark:text-purple-400',
     bgColor: 'bg-purple-100 dark:bg-purple-400/10',
+  },
+  [ResourceType.Tradition]: {
+    name: '传统',
+    icon: Scroll,
+    color: 'text-yellow-600 dark:text-yellow-400',
+    bgColor: 'bg-yellow-100 dark:bg-yellow-400/10',
   },
   [ResourceType.Settlers]: {
     name: '人口',
@@ -125,6 +131,7 @@ export const ResourcePanel = memo(() => {
         <ResourceDisplay type={ResourceType.Meat} value={uiData.resources.meat} storageCap={uiData.storageCaps.meat} />
         <ResourceDisplay type={ResourceType.CuredMeat} value={uiData.resources.curedMeat} storageCap={uiData.storageCaps.curedMeat} />
         <ResourceDisplay type={ResourceType.Ideas} value={uiData.resources.ideas} />
+        <ResourceDisplay type={ResourceType.Tradition} value={uiData.resources.tradition} storageCap={uiData.storageCaps.tradition} />
         <ResourceDisplay type={ResourceType.Settlers} value={uiData.resources.settlers} />
       </div>
     </div>

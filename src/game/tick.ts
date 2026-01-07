@@ -245,6 +245,20 @@ export const gameTick = () => {
     }
   }
 
+  // 4.6 Totem Poles - Auto-generate tradition
+  const totemPoleCount = state.getBuildingCount ? state.getBuildingCount('totemPole' as any) : new Decimal(0);
+  if (totemPoleCount.greaterThan(0)) {
+    // Each totem generates 0.005 tradition per tick = 0.05/sec (at 10 TPS)
+    const traditionProduction = totemPoleCount.times(new Decimal(0.005));
+
+    if (traditionProduction.greaterThan(0)) {
+      // Directly update tradition state (similar to ideas)
+      useGameStore.setState((prevState) => ({
+        tradition: (prevState.tradition || new Decimal(0)).plus(traditionProduction),
+      }));
+    }
+  }
+
   // 5. Population consumes food (dynamic calculation based on season and warmth)
   // Uses the Golden Ratio model: 1.0 food/sec per person, modified by season and warmth
   // Multi-resource system: Food (1x), Meat (1x), CuredMeat (5x)
@@ -306,6 +320,16 @@ export const gameTick = () => {
   if (totalFoodPoints.lte(0) && state.settlers.lessThan(settlersBeforeStarvation)) {
     const deaths = settlersBeforeStarvation.minus(state.settlers);
     state.addLog(`${getStarvationMessage()} 损失了 ${deaths.toFixed(0)} 名族人。`, 'danger');
+
+    // Death Conversion: Check for graveyard
+    const graveyardCount = state.getBuildingCount ? state.getBuildingCount('graveyard' as any) : new Decimal(0);
+    if (graveyardCount.greaterThan(0)) {
+      const traditionGained = deaths.times(new Decimal(50));
+      useGameStore.setState((prevState) => ({
+        tradition: (prevState.tradition || new Decimal(0)).plus(traditionGained),
+      }));
+      state.addLog(`一名族人离世了，但他的精神加入了传统（+${traditionGained.toFixed(0)} 传统）。`, 'success');
+    }
   } else if (totalFoodPoints.lte(0) && state.settlers.equals(settlersBeforeStarvation)) {
     // Food ran out but nobody died yet (grace period)
     state.addLog('食物已经耗尽！族人们正在忍受饥饿...', 'warning');
@@ -324,6 +348,16 @@ export const gameTick = () => {
     if (woodBeforeCheck.lte(0) && state.settlers.lessThan(settlersBeforeFreezing)) {
       const deaths = settlersBeforeFreezing.minus(state.settlers);
       state.addLog(`${getFreezingMessage()} 损失了 ${deaths.toFixed(0)} 名族人。`, 'danger');
+
+      // Death Conversion: Check for graveyard
+      const graveyardCount = state.getBuildingCount ? state.getBuildingCount('graveyard' as any) : new Decimal(0);
+      if (graveyardCount.greaterThan(0)) {
+        const traditionGained = deaths.times(new Decimal(50));
+        useGameStore.setState((prevState) => ({
+          tradition: (prevState.tradition || new Decimal(0)).plus(traditionGained),
+        }));
+        state.addLog(`一名族人离世了，但他的精神加入了传统（+${traditionGained.toFixed(0)} 传统）。`, 'success');
+      }
     } else if (woodAfterCheck.lte(0) && state.settlers.equals(settlersBeforeFreezing)) {
       // Wood ran out but nobody froze yet
       state.addLog('木材已经耗尽！族人们在严寒中瑟瑟发抖...', 'warning');
@@ -368,13 +402,14 @@ export const gameTick = () => {
   if (eventResult) {
     const { result } = eventResult;
 
-    // Log the event result
+    // Log is event result
     state.addLog(result.message, result.logType);
 
-    // Handle special actions (for future UI implementation)
+    // Handle special actions - set to active state for UI to display
     if (result.specialAction) {
-      // TODO: Display special action button in UI
+      state.setActiveSpecialAction(result.specialAction);
     }
+  }
   }
 
   // Update temporary effects (remove expired ones)

@@ -1,5 +1,5 @@
 import { memo, useState, useEffect } from 'react';
-import { Home, Warehouse, Trees, Shield, Mountain, Crosshair, Drumstick } from 'lucide-react';
+import { Home, Warehouse, Trees, Shield, Mountain, Crosshair, Drumstick, Scroll, Skull } from 'lucide-react';
 import { gameActions } from '../store/useGameStore';
 import { BuildingType, ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
@@ -48,18 +48,32 @@ const BUILDING_CONFIG = {
     description: '自动将生肉转化为肉干，增加存储上限',
     category: 'survival' as const,
   },
+  [BuildingType.TotemPole]: {
+    name: '图腾柱',
+    icon: Scroll,
+    description: '自动产出传统（+0.05/秒）- 建议最多建造 5 个',
+    category: 'culture' as const,
+  },
+  [BuildingType.Graveyard]: {
+    name: '墓地',
+    icon: Skull,
+    description: '死亡转化：每名族人死亡获得 50 传统',
+    category: 'culture' as const,
+  },
 };
 
 const CATEGORY_NAMES = {
   population: '人口建筑',
   storage: '存储建筑',
   survival: '生存设施',
+  culture: '文化建筑',
 };
 
 const CATEGORY_COLORS = {
   population: 'bg-blue-50 dark:bg-blue-900/10 border-blue-300 dark:border-blue-700',
   storage: 'bg-amber-50 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700',
   survival: 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-300 dark:border-emerald-700',
+  culture: 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-300 dark:border-yellow-700',
 };
 
 export const BuildingsPanel = memo(() => {
@@ -71,6 +85,8 @@ export const BuildingsPanel = memo(() => {
     [BuildingType.StoneShed]: new Decimal(0),
     [BuildingType.SnareTrap]: new Decimal(0),
     [BuildingType.DryingRack]: new Decimal(0),
+    [BuildingType.TotemPole]: new Decimal(0),
+    [BuildingType.Graveyard]: new Decimal(0),
   });
 
   const [costs, setCosts] = useState<Record<BuildingType, string>>({} as Record<BuildingType, string>);
@@ -91,6 +107,8 @@ export const BuildingsPanel = memo(() => {
         const skin = gameActions.getResource ? gameActions.getResource(ResourceType.Skin) : new Decimal(0);
         const stone = gameActions.getResource ? gameActions.getResource(ResourceType.Stone) : new Decimal(0);
         const food = gameActions.getResource ? gameActions.getResource(ResourceType.Food) : new Decimal(0);
+        const state = useGameStore.getState();
+        const ideas = state.ideas || new Decimal(0);
 
         allBuildings.forEach((buildingType) => {
           // Get building count
@@ -100,9 +118,40 @@ export const BuildingsPanel = memo(() => {
           // Get building cost
           const cost = gameActions.getBuildingCost ? gameActions.getBuildingCost(buildingType) : {} as any;
           const costParts: string[] = [];
-
           if (cost[ResourceType.Wood]?.greaterThan(0)) {
             costParts.push(`${cost[ResourceType.Wood].toFixed(1)} 木材`);
+          }
+          if (cost[ResourceType.Food]?.greaterThan(0)) {
+            costParts.push(`${cost[ResourceType.Food].toFixed(1)} 浆果`);
+          }
+          if (cost[ResourceType.Skin]?.greaterThan(0)) {
+            costParts.push(`${cost[ResourceType.Skin].toFixed(1)} 毛皮`);
+          }
+          if (cost[ResourceType.Stone]?.greaterThan(0)) {
+            costParts.push(`${cost[ResourceType.Stone].toFixed(1)} 石料`);
+          }
+          if (cost[ResourceType.Ideas]?.greaterThan(0)) {
+            costParts.push(`${cost[ResourceType.Ideas].toFixed(1)} 理念`);
+          }
+
+          costs[buildingType] = costParts.join(' + ') || '免费';
+
+          // Check if affordable
+          let canAffordBuilding = true;
+          if (cost[ResourceType.Wood]?.greaterThan(0) && wood.lessThan(cost[ResourceType.Wood])) {
+            canAffordBuilding = false;
+          }
+          if (cost[ResourceType.Food]?.greaterThan(0) && food.lessThan(cost[ResourceType.Food])) {
+            canAffordBuilding = false;
+          }
+          if (cost[ResourceType.Skin]?.greaterThan(0) && skin.lessThan(cost[ResourceType.Skin])) {
+            canAffordBuilding = false;
+          }
+          if (cost[ResourceType.Stone]?.greaterThan(0) && stone.lessThan(cost[ResourceType.Stone])) {
+            canAffordBuilding = false;
+          }
+          if (cost[ResourceType.Ideas]?.greaterThan(0) && ideas.lessThan(cost[ResourceType.Ideas])) {
+            canAffordBuilding = false;
           }
           if (cost[ResourceType.Food]?.greaterThan(0)) {
             costParts.push(`${cost[ResourceType.Food].toFixed(1)} 浆果`);
@@ -164,6 +213,8 @@ export const BuildingsPanel = memo(() => {
         [BuildingType.StoneShed]: ['石料库建造完成，石料储存上限提升。', '新的石料库建成了。'],
         [BuildingType.SnareTrap]: ['陷阱设置完成，等待猎物上钩。', '族人们在荒野中设置了新的陷阱。'],
         [BuildingType.DryingRack]: ['晾肉架搭建完成，可以开始加工肉干了。', '新的晾肉架建成了。'],
+        [BuildingType.TotemPole]: ['图腾柱竖立完成，先祖的故事将永远流传。', '族人们制作了新的图腾柱，部落精神更加凝聚。'],
+        [BuildingType.Graveyard]: ['墓地修建完成，逝者将得到安息。', '新的墓地建成了，我们对逝者表示敬意。'],
       };
       const buildingMessages = messages[type] || ['建筑完成。'];
       gameActions.addLog(buildingMessages[Math.floor(Math.random() * buildingMessages.length)], 'success');

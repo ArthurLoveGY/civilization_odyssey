@@ -9,6 +9,7 @@ export enum ResourceType {
   Meat = 'meat',          // Raw meat from hunting/traps
   CuredMeat = 'curedMeat', // Processed meat (5x food value)
   Ideas = 'ideas',        // Knowledge/Insight for tech research
+  Tradition = 'tradition', // Culture/Tradition resource for Era 2 unlock
   Settlers = 'settlers',
 }
 
@@ -21,6 +22,7 @@ export const RESOURCE_NAMES: Record<ResourceType, string> = {
   [ResourceType.Meat]: '生肉',
   [ResourceType.CuredMeat]: '肉干',
   [ResourceType.Ideas]: '理念',
+  [ResourceType.Tradition]: '传统',
   [ResourceType.Settlers]: '人口',
 };
 
@@ -49,6 +51,8 @@ export enum BuildingType {
   StoneShed = 'stoneShed',
   SnareTrap = 'snareTrap',    // Semi-auto hunting tool (decays over time)
   DryingRack = 'dryingRack',  // Converts meat → cured meat
+  TotemPole = 'totemPole',    // Auto-generates tradition (+0.05/sec)
+  Graveyard = 'graveyard',     // Death conversion: each death → 50 tradition
 }
 
 // Display names for buildings (Chinese)
@@ -60,6 +64,8 @@ export const BUILDING_NAMES: Record<BuildingType, string> = {
   [BuildingType.StoneShed]: '石料场',
   [BuildingType.SnareTrap]: '陷阱',
   [BuildingType.DryingRack]: '晾肉架',
+  [BuildingType.TotemPole]: '图腾柱',
+  [BuildingType.Graveyard]: '墓地',
 };
 
 // Bonfire state
@@ -98,6 +104,7 @@ export interface StorageCap {
   stone: Decimal;
   meat: Decimal;
   curedMeat: Decimal;
+  tradition: Decimal;
 }
 
 // Scouting result types

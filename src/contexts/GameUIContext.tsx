@@ -15,6 +15,7 @@ interface GameUIData {
     meat: Decimal;
     curedMeat: Decimal;
     ideas: Decimal;
+    tradition: Decimal;
     settlers: Decimal;
   };
   // Formatted strings for display
@@ -26,6 +27,7 @@ interface GameUIData {
     meat: string;
     curedMeat: string;
     ideas: string;
+    tradition: string;
     settlers: string;
   };
   storageCaps: {
@@ -35,6 +37,7 @@ interface GameUIData {
     stone: string;
     meat: string;
     curedMeat: string;
+    tradition: string;
   };
   season: {
     current: string;
@@ -71,6 +74,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
     const meatDecimal = state.resources[ResourceType.Meat] || new Decimal(0);
     const curedMeatDecimal = state.resources[ResourceType.CuredMeat] || new Decimal(0);
     const ideasDecimal = state.ideas || new Decimal(0);
+    const traditionDecimal = state.tradition || new Decimal(0);
     const settlersDecimal = state.resources[ResourceType.Settlers] || new Decimal(0);
 
     return {
@@ -82,6 +86,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
         meat: meatDecimal,
         curedMeat: curedMeatDecimal,
         ideas: ideasDecimal,
+        tradition: traditionDecimal,
         settlers: settlersDecimal,
       },
       resources: {
@@ -92,6 +97,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
         meat: formatResourceAmount(meatDecimal, ResourceType.Meat),
         curedMeat: formatResourceAmount(curedMeatDecimal, ResourceType.CuredMeat),
         ideas: formatResourceAmount(ideasDecimal, ResourceType.Ideas),
+        tradition: formatResourceAmount(traditionDecimal, ResourceType.Tradition),
         settlers: formatResourceAmount(settlersDecimal, ResourceType.Settlers),
       },
       storageCaps: {
@@ -101,6 +107,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
         stone: gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Stone).toFixed(0) : '50',
         meat: gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Meat).toFixed(0) : '30',
         curedMeat: gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.CuredMeat).toFixed(0) : '100',
+        tradition: gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Tradition).toFixed(0) : '1000',
       },
       season: {
         current: state.currentSeason,
@@ -130,6 +137,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
       const meatDecimal = state.resources[ResourceType.Meat] || new Decimal(0);
       const curedMeatDecimal = state.resources[ResourceType.CuredMeat] || new Decimal(0);
       const ideasDecimal = state.ideas || new Decimal(0);
+      const traditionDecimal = state.tradition || new Decimal(0);
       const settlersDecimal = state.resources[ResourceType.Settlers] || new Decimal(0);
 
       const newResourcesDecimal = {
@@ -140,6 +148,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
         meat: meatDecimal,
         curedMeat: curedMeatDecimal,
         ideas: ideasDecimal,
+        tradition: traditionDecimal,
         settlers: settlersDecimal,
       };
 
@@ -151,6 +160,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
         meat: formatResourceAmount(meatDecimal, ResourceType.Meat),
         curedMeat: formatResourceAmount(curedMeatDecimal, ResourceType.CuredMeat),
         ideas: formatResourceAmount(ideasDecimal, ResourceType.Ideas),
+        tradition: formatResourceAmount(traditionDecimal, ResourceType.Tradition),
         settlers: formatResourceAmount(settlersDecimal, ResourceType.Settlers),
       };
 
@@ -161,6 +171,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
         stone: gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Stone).toFixed(0) : '50',
         meat: gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Meat).toFixed(0) : '30',
         curedMeat: gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.CuredMeat).toFixed(0) : '100',
+        tradition: gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Tradition).toFixed(0) : '1000',
       };
 
       const newSeason = {
@@ -180,6 +191,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
           prev.resourcesDecimal.meat.equals(newResourcesDecimal.meat) &&
           prev.resourcesDecimal.curedMeat.equals(newResourcesDecimal.curedMeat) &&
           prev.resourcesDecimal.ideas.equals(newResourcesDecimal.ideas) &&
+          prev.resourcesDecimal.tradition.equals(newResourcesDecimal.tradition) &&
           prev.resourcesDecimal.settlers.equals(newResourcesDecimal.settlers) &&
           prev.storageCaps.food === newStorageCaps.food &&
           prev.storageCaps.wood === newStorageCaps.wood &&
@@ -187,6 +199,7 @@ export const GameUIProvider = ({ children, updateInterval = 200 }: GameUIProvide
           prev.storageCaps.stone === newStorageCaps.stone &&
           prev.storageCaps.meat === newStorageCaps.meat &&
           prev.storageCaps.curedMeat === newStorageCaps.curedMeat &&
+          prev.storageCaps.tradition === newStorageCaps.tradition &&
           prev.season.current === newSeason.current &&
           prev.season.progress === newSeason.progress &&
           prev.season.days === newSeason.days &&

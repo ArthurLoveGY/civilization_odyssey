@@ -69,6 +69,7 @@ export const createTechSlice: StateCreator<
   // Initial state
   researched: [],
   ideas: new Decimal(0),
+  tradition: new Decimal(0),
   councilGround: {
     lastUsedTime: 0,
     cooldown: COUNCIL_GROUND_COOLDOWN,

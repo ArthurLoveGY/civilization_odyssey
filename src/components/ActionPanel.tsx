@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { Apple, Trees, Crosshair, Compass, Users } from 'lucide-react';
+import { Apple, Trees, Crosshair, Compass, Users, Sparkles } from 'lucide-react';
 import { gameActions } from '../store/useGameStore';
 import { ResourceType, ScoutingResult } from '../types/game';
 import { cn } from '../utils/cn';
@@ -63,6 +63,19 @@ const ACTION_CONFIG: Record<string, Action> = {
     amount: new Decimal(50),
     resource: ResourceType.Food,
     cooldownMs: 5000,  // 5秒冷却
+  },
+  grandFestival: {
+    name: '盛大祭典',
+    icon: Sparkles,
+    description: '消耗 500 浆果 + 100 木材 + 50 肉干 → 获得 100 传统',
+    color: 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600',
+    multiResource: true,
+    resources: {
+      [ResourceType.Food]: new Decimal(500),
+      [ResourceType.Wood]: new Decimal(100),
+      [ResourceType.CuredMeat]: new Decimal(50),
+    },
+    cooldownMs: 300000,  // 5分钟冷却
   },
 };
 
@@ -208,6 +221,100 @@ const CouncilGroundButton = memo(() => {
 
 CouncilGroundButton.displayName = 'CouncilGroundButton';
 
+// Special Action Button Component
+const SpecialActionButton = memo(() => {
+  const [activeSpecialAction, setActiveSpecialActionState] = useState<{
+    action: any;
+    startTime: number;
+  } | null>(null);
+  const [progress, setProgress] = useState(0);
+
+  // 监听特殊动作状态
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const state = useGameStore.getState();
+      const specialAction = (state as any).activeSpecialAction;
+
+      if (specialAction) {
+        setActiveSpecialActionState(specialAction);
+        const elapsed = Date.now() - specialAction.startTime;
+        const progressPercent = Math.min(100, (elapsed / specialAction.action.duration) * 100);
+        setProgress(progressPercent);
+
+        // 自动完成
+        if (elapsed >= specialAction.action.duration) {
+          gameActions.completeSpecialAction();
+          setActiveSpecialActionState(null);
+          setProgress(0);
+        }
+      } else {
+        setActiveSpecialActionState(null);
+        setProgress(0);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!activeSpecialAction) return null;
+
+  const handleComplete = () => {
+    gameActions.completeSpecialAction();
+    setActiveSpecialActionState(null);
+    setProgress(0);
+  };
+
+  const handleSkip = () => {
+    gameActions.clearSpecialAction();
+    setActiveSpecialActionState(null);
+    setProgress(0);
+  };
+
+  const remainingTime = Math.max(0, activeSpecialAction.action.duration - (Date.now() - activeSpecialAction.startTime));
+  const remainingSeconds = (remainingTime / 1000).toFixed(1);
+
+  return (
+    <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg p-4 shadow-lg">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-1">
+          <div className="text-lg font-bold text-white">{activeSpecialAction.action.name}</div>
+          <div className="text-sm text-white/80">{activeSpecialAction.action.description}</div>
+        </div>
+        <button
+          onClick={handleComplete}
+          disabled={remainingTime > 0}
+          className={cn(
+            'px-4 py-2 rounded-lg font-semibold transition-all',
+            remainingTime > 0
+              ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
+              : 'bg-green-500 hover:bg-green-600 text-white'
+          )}
+        >
+          {remainingTime > 0 ? `${remainingSeconds}s` : '完成'}
+        </button>
+      </div>
+
+      {/* 进度条 */}
+      <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden">
+        <div
+          className="bg-white h-full transition-all duration-50"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {/* 取消按钮 */}
+      <button
+        onClick={handleSkip}
+        className="mt-2 text-xs text-white/60 hover:text-white/90 transition-colors"
+      >
+        放弃此行动
+      </button>
+    </div>
+  );
+});
+
+SpecialActionButton.displayName = 'SpecialActionButton';
+
 export const ActionPanel = memo(() => {
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
   const [remainingTimes, setRemainingTimes] = useState<Record<string, string>>({});
@@ -336,6 +443,47 @@ export const ActionPanel = memo(() => {
       return;
     }
 
+    // Special handling for grand festival action
+    if (actionKey === 'grandFestival') {
+      const festivalCost = {
+        [ResourceType.Food]: new Decimal(500),
+        [ResourceType.Wood]: new Decimal(100),
+        [ResourceType.CuredMeat]: new Decimal(50),
+      };
+
+      // Check if can afford
+      let canAfford = true;
+      for (const [resource, amount] of Object.entries(festivalCost)) {
+        const current = gameActions.getResource(resource as ResourceType);
+        if (current.lessThan(amount)) {
+          canAfford = false;
+          break;
+        }
+      }
+
+      if (!canAfford) {
+        if (gameActions.addLog) {
+          gameActions.addLog('资源不足，无法举行盛大祭典（需要 500 浆果 + 100 木材 + 50 肉干）。', 'warning');
+        }
+        return;
+      }
+
+      // Consume resources
+      gameActions.removeResources(festivalCost);
+
+      // Grant tradition
+      const traditionReward = new Decimal(100);
+      useGameStore.setState(prevState => ({
+        tradition: (prevState.tradition || new Decimal(0)).plus(traditionReward)
+      }));
+
+      // Log success with golden celebration message
+      if (gameActions.addLog) {
+        gameActions.addLog('🎉 盛大祭典开始了！族人欢呼雀跃，部落的精神更加凝聚（+100 传统）！', 'success');
+      }
+      return;
+    }
+
     // Normal actions
     if ('multiResource' in action) {
       Object.entries(action.resources).forEach(([resource, amount]) => {
@@ -373,6 +521,9 @@ export const ActionPanel = memo(() => {
 
         {/* Council Ground Button */}
         <CouncilGroundButton />
+
+        {/* Special Action Button */}
+        <SpecialActionButton />
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ const BUILDING_CONFIG: Record<BuildingType, {
   costMultiplier: Decimal;
   populationBonus?: Decimal;
   storageBonus?: Partial<Record<ResourceType, Decimal>>;
-  category?: 'population' | 'storage' | 'survival';
+  category?: 'population' | 'storage' | 'survival' | 'culture';
 }> = {
   [BuildingType.Tent]: {
     baseCost: {
@@ -83,6 +83,22 @@ const BUILDING_CONFIG: Record<BuildingType, {
     },
     category: 'survival',
   },
+  [BuildingType.TotemPole]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(50),
+      [ResourceType.Stone]: new Decimal(20),
+      [ResourceType.Ideas]: new Decimal(100),
+    },
+    costMultiplier: new Decimal(1.8),  // High cost scaling (max 5 recommended)
+    category: 'culture',
+  },
+  [BuildingType.Graveyard]: {
+    baseCost: {
+      [ResourceType.Stone]: new Decimal(100),
+    },
+    costMultiplier: new Decimal(1.5),
+    category: 'culture',
+  },
 };
 
 // Base storage caps (without buildings)
@@ -93,6 +109,7 @@ const BASE_STORAGE_CAPS: StorageCap = {
   stone: new Decimal(50),
   meat: new Decimal(30),
   curedMeat: new Decimal(100),
+  tradition: new Decimal(1000),  // Tradition cap
 };
 
 // Base max population (without tents)
@@ -158,6 +175,16 @@ export const createBuildingsSlice: StateCreator<
       baseCost: BUILDING_CONFIG[BuildingType.DryingRack].baseCost,
       costMultiplier: BUILDING_CONFIG[BuildingType.DryingRack].costMultiplier,
     },
+    totemPole: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.TotemPole].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.TotemPole].costMultiplier,
+    },
+    graveyard: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Graveyard].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Graveyard].costMultiplier,
+    },
   } as any,
 
   storageCaps: {
@@ -167,6 +194,7 @@ export const createBuildingsSlice: StateCreator<
     stone: new Decimal(50),
     meat: new Decimal(30),
     curedMeat: new Decimal(100),
+    tradition: new Decimal(1000),
   },
 
   // Get building count

@@ -19,6 +19,7 @@ export const createResourceSlice: StateCreator<
     [ResourceType.Meat]: new Decimal(0),      // Start with 0 meat
     [ResourceType.CuredMeat]: new Decimal(0), // Start with 0 cured meat
     [ResourceType.Ideas]: new Decimal(0),     // Start with 0 ideas
+    [ResourceType.Tradition]: new Decimal(0), // Start with 0 tradition
     [ResourceType.Settlers]: new Decimal(5),  // Start with 5 settlers
   },
   storageCaps: {
@@ -28,6 +29,7 @@ export const createResourceSlice: StateCreator<
     stone: new Decimal(50),
     meat: new Decimal(30),      // Meat spoils faster
     curedMeat: new Decimal(100), // Cured meat lasts longer
+    tradition: new Decimal(1000), // Tradition cap (Era 2 unlock requires 500)
     // Ideas has no storage cap (knowledge is unlimited!)
   },
 

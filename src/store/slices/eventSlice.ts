@@ -17,10 +17,10 @@ const RANDOM_EVENTS = [
     description: '潮湿的空气导致部分浆果腐烂了。',
     type: EventType.ResourceLoss,
     rarity: EventRarity.Common,
-    season: Season.Spring,  // 仅春季
     condition: (state: any) => {
       const food = state.resources?.[ResourceType.Food] || new Decimal(0);
-      return food.greaterThan(200);
+      const season = state.currentSeason || Season.Spring;
+      return food.greaterThan(200) && season !== Season.Winter;  // 非冬季且食物 > 200
     },
     effect: (state: any) => {
       const currentFood = state.resources[ResourceType.Food];
@@ -237,6 +237,7 @@ export const createEventSlice: StateCreator<
   currentTick: 0,
   activeEvents: [],      // 已触发的事件（用于冷却追踪）
   temporaryEffects: [],  // 当前激活的临时效果
+  activeSpecialAction: null,  // 当前活动的特殊动作
 
   // 检查并触发随机事件
   checkRandomEvent: (currentState: any) => {
@@ -344,6 +345,41 @@ export const createEventSlice: StateCreator<
 
     return multiplier;
   },
+
+  // 设置活动的特殊动作
+  setActiveSpecialAction: (action: any) => {
+    set({
+      activeSpecialAction: {
+        action: action,
+        startTime: Date.now()
+      }
+    });
+  },
+
+  // 完成特殊动作并执行 onComplete 回调
+  completeSpecialAction: () => {
+    const state = get();
+    const { activeSpecialAction } = state;
+
+    if (activeSpecialAction && activeSpecialAction.action.onComplete) {
+      // 执行回调函数
+      const currentState = useGameStore.getState();
+      const result = activeSpecialAction.action.onComplete(currentState);
+
+      // 记录日志
+      if (result && currentState.addLog) {
+        currentState.addLog(result.message, result.logType);
+      }
+    }
+
+    // 清除特殊动作
+    set({ activeSpecialAction: null });
+  },
+
+  // 清除特殊动作（不执行回调）
+  clearSpecialAction: () => {
+    set({ activeSpecialAction: null });
+  },
 });
 
 // Type exports
@@ -351,6 +387,10 @@ export interface EventSliceState {
   currentTick: number;
   activeEvents: any[];
   temporaryEffects: any[];
+  activeSpecialAction: {
+    action: any;
+    startTime: number;
+  } | null;
 }
 
 export interface EventActions {
@@ -358,4 +398,7 @@ export interface EventActions {
   applyTemporaryEffect: (effect: any) => void;
   updateTemporaryEffects: () => any[];
   getBonfireConsumptionMultiplier: () => number;
+  setActiveSpecialAction: (action: any) => void;
+  completeSpecialAction: () => void;
+  clearSpecialAction: () => void;
 }
