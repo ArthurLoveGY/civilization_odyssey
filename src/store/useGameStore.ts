@@ -15,6 +15,7 @@ import { createBuildingsSlice } from './slices/buildingsSlice';
 import { createScoutingSlice } from './slices/scoutingSlice';
 import { createTribeSlice } from './slices/tribeSlice';
 import { createTechSlice } from './slices/techSlice';
+import { createEventSlice } from './slices/eventSlice';
 
 // Game control slice
 const createGameSlice = (): GameSliceState & GameActions => ({
@@ -40,6 +41,7 @@ export const useGameStore = create<GameStore>()((set, get, api) => ({
   ...createScoutingSlice(set, get, api),
   ...createTribeSlice(set, get, api),
   ...createTechSlice(set, get, api),
+  ...createEventSlice(set, get, api),
 }));
 
 // Export actions directly for UI components
@@ -91,4 +93,9 @@ export const gameActions = {
   getCouncilGroundCooldownRemaining: () => useGameStore.getState().getCouncilGroundCooldownRemaining(),
   getManualActionMultiplier: (resourceType: any) => useGameStore.getState().getManualActionMultiplier(resourceType),
   getSkinDropRateMultiplier: () => useGameStore.getState().getSkinDropRateMultiplier(),
+  // Event actions
+  checkRandomEvent: (state: any) => useGameStore.getState().checkRandomEvent(state),
+  applyTemporaryEffect: (effect: any) => useGameStore.getState().applyTemporaryEffect(effect),
+  updateTemporaryEffects: () => useGameStore.getState().updateTemporaryEffects(),
+  getBonfireConsumptionMultiplier: () => useGameStore.getState().getBonfireConsumptionMultiplier(),
 };

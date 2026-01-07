@@ -61,6 +61,12 @@ export interface TechSliceState {
   councilGround: CouncilGroundState;
 }
 
+export interface EventSliceState {
+  currentTick: number;
+  activeEvents: any[];
+  temporaryEffects: any[];
+}
+
 // Combined store state
 export interface GameStore
   extends ResourceSliceState,
@@ -73,6 +79,7 @@ export interface GameStore
     ScoutingSliceState,
     TribeSliceState,
     TechSliceState,
+    EventSliceState,
     ResourceActions,
     SeasonActions,
     PopulationActions,
@@ -82,7 +89,8 @@ export interface GameStore
     BuildingsActions,
     ScoutingActions,
     TribeActions,
-    TechActions {}
+    TechActions,
+    EventActions {}
 
 // ========================================
 // SLICE ACTIONS
@@ -180,4 +188,11 @@ export interface TechActions {
   getCouncilGroundCooldownRemaining: () => string;
   getManualActionMultiplier: (resourceType: ResourceType) => Decimal;
   getSkinDropRateMultiplier: () => Decimal;
+}
+
+export interface EventActions {
+  checkRandomEvent: (state: any) => { event: any; result: any } | null;
+  applyTemporaryEffect: (effect: any) => void;
+  updateTemporaryEffects: () => any[];
+  getBonfireConsumptionMultiplier: () => number;
 }

@@ -268,3 +268,70 @@ export interface ProductionRates {
   [ResourceType.Skin]: Decimal;
   [ResourceType.Stone]: Decimal;
 }
+
+// ========== 事件系统类型 Event System ==========
+
+export enum EventType {
+  ResourceLoss = 'resourceLoss',      // 资源损失
+  ResourceGain = 'resourceGain',       // 资源获得
+  Wisdom = 'wisdom',                   // 智慧/理念
+  Debuff = 'debuff',                   // Debuff
+  Special = 'special',                 // 特殊互动
+}
+
+export enum EventRarity {
+  Common = 'common',      // 60%
+  Uncommon = 'uncommon',  // 30%
+  Rare = 'rare',          // 10%
+}
+
+export interface GameEvent {
+  id: string;
+  name: string;
+  description: string;
+  type: EventType;
+  rarity: EventRarity;
+  season?: Season;           // 触发季节限制（可选）
+  condition: (state: any) => boolean;  // 触发条件
+  effect: (state: any) => EventResult;  // 事件效果
+  cooldownTicks: number;     // 冷却时间（ticks）
+  lastTriggerTick?: number;  // 上次触发时间
+}
+
+export interface EventResult {
+  success: boolean;
+  message: string;
+  logType: 'info' | 'warning' | 'danger' | 'success';
+  resources?: Partial<Record<ResourceType, Decimal>>;
+  ideas?: Decimal;
+  debuff?: TemporaryEffect;
+  specialAction?: SpecialAction;
+}
+
+export interface SpecialAction {
+  id: string;
+  name: string;
+  description: string;
+  duration: number;  // 持续时间（ms）
+  onComplete: (state: any) => EventResult;
+}
+
+// ========== 临时效果系统 Temporary Effects ==========
+
+export interface TemporaryEffect {
+  id: string;
+  name: string;
+  type: 'debuff' | 'buff';
+  startTime: number;    // 开始时间（timestamp）
+  duration: number;     // 持续时间（ms）
+  modifier: EffectModifier;
+}
+
+export type EffectModifier =
+  | { type: 'bonfireConsumption'; value: number }  // 篝火消耗倍率
+  | { type: 'production'; resource: ResourceType; value: number }  // 产出倍率
+  | { type: 'consumption'; resource: ResourceType; value: number }; // 消耗倍率
+
+export interface TemporaryEffectState {
+  activeEffects: TemporaryEffect[];
+}

@@ -254,7 +254,7 @@ export const ActionPanel = memo(() => {
 
       // 50% chance for skin (affected by tech multipliers)
       const skinMultiplier = gameActions.getSkinDropRateMultiplier ? gameActions.getSkinDropRateMultiplier() : new Decimal(1);
-      const skinChance = 0.5 * skinMultiplier.toNumber();
+      const skinChance = new Decimal(0.5).times(skinMultiplier).toNumber();
 
       if (Math.random() < skinChance) {
         gameActions.addResource(ResourceType.Skin, new Decimal(1));

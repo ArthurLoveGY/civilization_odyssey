@@ -1,7 +1,7 @@
 import { memo, useState, useEffect } from 'react';
 import { Plus, Minus, Lightbulb } from 'lucide-react';
 import { gameActions, useGameStore } from '../store/useGameStore';
-import { JobType, ResourceType } from '../types/game';
+import { JobType, ResourceType, Season, BonfireStatus } from '../types/game';
 import { cn } from '../utils/cn';
 import Decimal from 'decimal.js';
 
@@ -119,6 +119,15 @@ WorkerControl.displayName = 'WorkerControl';
 export const TribalManagementPanel = memo(() => {
   const [totalPop, setTotalPop] = useState<Decimal>(new Decimal(5));
   const [idlePop, setIdlePop] = useState<Decimal>(new Decimal(5));
+
+  // 新增：叙事者状态
+  const [storytellerStatus, setStorytellerStatus] = useState({
+    isInspired: true,
+    message: "未分配工作的部落成员会围坐在篝火旁传承知识。没有火，就没有历史。",
+  });
+
+  // 渲染时日志
+  console.log('TribalManagementPanel 渲染: idlePop =', idlePop.toFixed(0));
   const [jobs, setJobs] = useState({
     gatherers: new Decimal(0),
     woodcutters: new Decimal(0),
@@ -135,13 +144,44 @@ export const TribalManagementPanel = memo(() => {
       try {
         const state = useGameStore.getState();
 
-        setTotalPop(state.settlers || new Decimal(5));
-        setIdlePop(state.getIdlePopulation ? state.getIdlePopulation() : new Decimal(5));
+        const totalPop = state.settlers || new Decimal(5);
+        const jobs = state.jobs || {
+          gatherers: new Decimal(0),
+          woodcutters: new Decimal(0),
+          stonecutters: new Decimal(0),
+        };
+
+        const gatherers = state.getWorkerCount ? state.getWorkerCount(JobType.Gatherer) : new Decimal(0);
+        const woodcutters = state.getWorkerCount ? state.getWorkerCount(JobType.Woodcutter) : new Decimal(0);
+        const stonecutters = state.getWorkerCount ? state.getWorkerCount(JobType.Stonecutter) : new Decimal(0);
+
+        // Debug logging
+        console.log('=== TribalManagementPanel Debug ===');
+        console.log('总人口 (totalPop):', totalPop.toFixed(0));
+        console.log('state.jobs:', {
+          gatherers: jobs.gatherers?.toFixed(0),
+          woodcutters: jobs.woodcutters?.toFixed(0),
+          stonecutters: jobs.stonecutters?.toFixed(0),
+        });
+        console.log('getWorkerCount:', {
+          gatherers: gatherers.toFixed(0),
+          woodcutters: woodcutters.toFixed(0),
+          stonecutters: stonecutters.toFixed(0),
+        });
+        console.log('计算: 总人口 - 工人 =', totalPop.minus(gatherers).minus(woodcutters).minus(stonecutters).toFixed(0));
+        console.log('getIdlePopulation():', state.getIdlePopulation ? state.getIdlePopulation().toFixed(0) : 'N/A');
+        console.log('======================================');
+
+        setTotalPop(totalPop);
+
+        const idlePopResult = state.getIdlePopulation ? state.getIdlePopulation() : new Decimal(5);
+        console.log('TribalManagementPanel: 准备设置 idlePop =', idlePopResult.toFixed(0));
+        setIdlePop(idlePopResult);
 
         setJobs({
-          gatherers: state.getWorkerCount ? state.getWorkerCount(JobType.Gatherer) : new Decimal(0),
-          woodcutters: state.getWorkerCount ? state.getWorkerCount(JobType.Woodcutter) : new Decimal(0),
-          stonecutters: state.getWorkerCount ? state.getWorkerCount(JobType.Stonecutter) : new Decimal(0),
+          gatherers: gatherers,
+          woodcutters: woodcutters,
+          stonecutters: stonecutters,
         });
 
         setUnlockedJobs({
@@ -150,9 +190,48 @@ export const TribalManagementPanel = memo(() => {
           stonecutter: state.isJobUnlocked ? state.isJobUnlocked(JobType.Stonecutter) : false,
         });
       } catch (e) {
-        // Ignore
+        console.error('TribalManagementPanel error:', e);
       }
     }, 200);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // 新增：更新叙事者状态（篝火叙事系统）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        const state = useGameStore.getState();
+
+        // 获取篝火状态
+        const bonfireStatus = state.getBonfireStatus ? state.getBonfireStatus() : BonfireStatus.Burning;
+        const isBonfireLit = bonfireStatus !== BonfireStatus.Extinguished;
+
+        // 获取季节
+        const currentSeason = state.currentSeason || Season.Spring;
+        const isWinter = currentSeason === Season.Winter;
+
+        // 更新状态显示
+        if (!isBonfireLit) {
+          setStorytellerStatus({
+            isInspired: false,
+            message: "篝火已熄灭！太冷了，没人想说话。需点燃篝火以传承知识。",
+          });
+        } else if (isWinter) {
+          setStorytellerStatus({
+            isInspired: true,
+            message: "冬季长夜漫漫，叙事者们围坐在温暖的篝火旁，讲述着古老的传说。（产出 +20%）",
+          });
+        } else {
+          setStorytellerStatus({
+            isInspired: true,
+            message: "未分配工作的部落成员会围坐在篝火旁传承知识。没有火，就没有历史。",
+          });
+        }
+      } catch (e) {
+        console.error('Storyteller status error:', e);
+      }
+    }, 500); // 每500ms更新一次
 
     return () => clearInterval(interval);
   }, []);
@@ -175,17 +254,37 @@ export const TribalManagementPanel = memo(() => {
           <span className="text-gray-700 dark:text-gray-300">总人口</span>
           <span className="font-bold text-blue-900 dark:text-blue-100 text-lg">{totalPop.toFixed(0)}</span>
         </div>
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between text-sm mb-2">
           <div className="flex items-center gap-1">
             <Lightbulb className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             <span className="text-gray-700 dark:text-gray-300">
-              闲置 / 思考者
+              叙事者
             </span>
           </div>
-          <span className="font-bold text-purple-900 dark:text-purple-100 text-lg">{idlePop.toFixed(0)}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-purple-900 dark:text-purple-100 text-lg">{idlePop.toFixed(0)}</span>
+
+            {/* 动态状态图标 */}
+            {storytellerStatus.isInspired ? (
+              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                <span>🔥</span>
+                <span>灵感涌现</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                <span>❄️</span>
+                <span>寒冷沉默</span>
+              </span>
+            )}
+          </div>
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
-          闲置人口会产出理念（知识），用于研究科技
+        <div className={cn(
+          "text-xs mt-2 italic",
+          storytellerStatus.isInspired
+            ? "text-gray-500 dark:text-gray-400"
+            : "text-red-600 dark:text-red-400 font-medium"
+        )}>
+          {storytellerStatus.message}
         </div>
       </div>
 

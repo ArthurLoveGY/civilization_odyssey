@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { getLogTypeColor, formatLogTimestamp } from '../utils/formatters';
 import { cn } from '../utils/cn';
@@ -25,7 +25,31 @@ const LogEntry = memo(({ log }: { log: { id: string; timestamp: Date; message: s
 LogEntry.displayName = 'LogEntry';
 
 export const LogPanel = memo(() => {
-  const logs = useGameStore((state) => state.logs);
+  const [logs, setLogs] = useState<Array<{ id: string; timestamp: Date; message: string; type: string }>>([]);
+  const lastLogIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const isMounted = useRef(true);
+
+    const interval = setInterval(() => {
+      if (!isMounted.current) return;
+
+      const state = useGameStore.getState();
+      const newLogs = state.logs.slice(-20); // Only keep last 20 logs
+
+      // Only update if logs actually changed
+      const newLastLogId = newLogs.length > 0 ? newLogs[newLogs.length - 1].id : null;
+      if (newLastLogId !== lastLogIdRef.current) {
+        lastLogIdRef.current = newLastLogId;
+        setLogs(newLogs);
+      }
+    }, 200);
+
+    return () => {
+      isMounted.current = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 h-full flex flex-col shadow-sm">
@@ -41,7 +65,7 @@ export const LogPanel = memo(() => {
           </div>
         ) : (
           <div className="space-y-2">
-            {logs.slice(-20).map((log) => <LogEntry key={log.id} log={log} />)}
+            {logs.map((log) => <LogEntry key={log.id} log={log} />)}
           </div>
         )}
       </div>

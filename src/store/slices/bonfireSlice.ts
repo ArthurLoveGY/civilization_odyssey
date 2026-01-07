@@ -2,6 +2,7 @@ import { StateCreator } from 'zustand';
 import Decimal from 'decimal.js';
 import { BonfireState, BonfireStatus } from '../../types/game';
 import { Season } from '../../types/game';
+import { useGameStore } from '../useGameStore';
 
 const BONFIRE_BASE_CONSUMPTION = new Decimal(0.1);  // Per tick (1.0 wood/second at 10 TPS)
 const BONFIRE_WINTER_MULTIPLIER = new Decimal(2.0);
@@ -57,10 +58,17 @@ export const createBonfireSlice: StateCreator<
         };
       }
 
-      // Calculate consumption (winter = 2x)
-      const consumptionRate = season === Season.Winter
+      // Get temporary multiplier from event system (e.g., storm debuff)
+      const fullState = useGameStore.getState();
+      const temporaryMultiplier = fullState.getBonfireConsumptionMultiplier ? fullState.getBonfireConsumptionMultiplier() : 1.0;
+
+      // Calculate base consumption (winter = 2x)
+      const baseConsumption = season === Season.Winter
         ? state.bonfire.consumptionRate.times(BONFIRE_WINTER_MULTIPLIER)
         : state.bonfire.consumptionRate;
+
+      // Apply temporary multiplier from events
+      const consumptionRate = baseConsumption.times(temporaryMultiplier);
 
       const newFuel = Decimal.max(0, currentFuel.minus(consumptionRate));
       const isNowExtinguished = newFuel.equals(0);

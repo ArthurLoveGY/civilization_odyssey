@@ -18,7 +18,6 @@ const DAYS_PER_TICK = 0.1;
 const POPULATION_GROWTH_INTERVAL = new Decimal(100);
 
 let previousSeason: Season = Season.Spring;
-let settlersBeforeTick: Decimal = new Decimal(0);
 let wasBonfireExtinguished: boolean = false;
 
 // Main game tick function
@@ -26,7 +25,6 @@ export const gameTick = () => {
   const state = useGameStore.getState();
 
   // Track state before tick
-  settlersBeforeTick = state.settlers;
   previousSeason = state.currentSeason;
   const bonfireStatusBeforeTick = state.getBonfireStatus();
   wasBonfireExtinguished = bonfireStatusBeforeTick === BonfireStatus.Extinguished;
@@ -140,24 +138,36 @@ export const gameTick = () => {
     state.addResource(ResourceType.Skin, passiveSkinProduction);
   }
 
-  // 4.3 Generate ideas from idle population (thinkers)
+  // 4.3 Generate ideas from idle population (Storytellers at the bonfire)
   const idlePop = state.getIdlePopulation ? state.getIdlePopulation() : new Decimal(0);
   if (idlePop.greaterThan(0)) {
     let ideasProduction = idlePop.times(IDEAS_PER_IDLE_SETTLER);
 
-    // Apply 50% penalty if bonfire extinguished or starving
-    if (bonfirePenaltyActive) {
-      ideasProduction = ideasProduction.times(new Decimal(0.5));
-    }
+    // ========== 新增：篝火叙事系统 Bonfire Storytellers ==========
 
-    // Check if starving (food = 0)
-    const currentFood = state.getResource(ResourceType.Food);
-    if (currentFood.equals(0)) {
-      ideasProduction = ideasProduction.times(new Decimal(0.5)); // Additional 50% penalty
-      if (bonfirePenaltyActive) {
-        ideasProduction = ideasProduction.times(new Decimal(0.5)); // Stack to 25%
+    // 1. 篝火状态检查
+    const bonfireStatus = state.getBonfireStatus ? state.getBonfireStatus() : BonfireStatus.Burning;
+    const currentSeason = state.currentSeason || Season.Spring;
+    const isBonfireLit = bonfireStatus !== BonfireStatus.Extinguished;
+
+    // 2. 基础修正：篝火是否燃烧
+    if (!isBonfireLit) {
+      // 篝火熄灭：严厉惩罚 - "太冷了，没人想说话" (90% reduction)
+      ideasProduction = ideasProduction.times(new Decimal(0.1));
+    } else {
+      // 3. 季节修正：冬季长夜，最适合讲故事 (+20% bonus)
+      if (currentSeason === Season.Winter) {
+        ideasProduction = ideasProduction.times(new Decimal(1.2));
       }
     }
+
+    // 4. 饥饿惩罚（独立于篝火状态）
+    const currentFood = state.getResource(ResourceType.Food);
+    if (currentFood.equals(0)) {
+      ideasProduction = ideasProduction.times(new Decimal(0.5)); // Starving people can't think
+    }
+
+    // ================================================================
 
     if (ideasProduction.greaterThan(0)) {
       // Directly update ideas state to ensure it works
@@ -171,14 +181,18 @@ export const gameTick = () => {
   const trapCount = state.getBuildingCount ? state.getBuildingCount('snareTrap' as any) : new Decimal(0);
   if (trapCount.greaterThan(0)) {
     // Each trap has a chance to produce resources each tick
-    // Base rate: 10% chance per tick per trap = 1 resource/sec (at 10 TPS)
+    // Base rate: 0.1% chance per tick per trap (0.001 = 0.1%)
     const TRAP_SUCCESS_RATE = 0.001; // Per trap per tick
-    const TRAP_DECAY_RATE = 0.01; // 1% chance per tick
+    const TRAP_DECAY_RATE = 0.01; // 1% chance per tick per trap
 
-    // Check each trap for production
-    const trapRoll = Math.random();
-    const expectedSuccesses = trapCount.times(TRAP_SUCCESS_RATE).toNumber();
-    const actualSuccesses = Math.floor(trapRoll < expectedSuccesses ? expectedSuccesses : 0);
+    // Check each trap for production (proper probability calculation)
+    let actualSuccesses = 0;
+    const trapDecimal = trapCount.toNumber();
+    for (let i = 0; i < trapDecimal; i++) {
+      if (Math.random() < TRAP_SUCCESS_RATE) {
+        actualSuccesses++;
+      }
+    }
 
     if (actualSuccesses > 0) {
       // Each successful trap produces: 1 meat + 30% chance of 1 skin
@@ -192,11 +206,16 @@ export const gameTick = () => {
       }
     }
 
-    // Check for trap decay (1% chance per trap per tick)
-    const decayRoll = Math.random();
-    const expectedDecays = trapCount.times(TRAP_DECAY_RATE).toNumber();
+    // Check for trap decay (proper probability calculation)
+    let actualDecays = 0;
+    for (let i = 0; i < trapDecimal; i++) {
+      if (Math.random() < TRAP_DECAY_RATE) {
+        actualDecays++;
+        break; // Only one trap can decay per tick
+      }
+    }
 
-    if (decayRoll < expectedDecays) {
+    if (actualDecays > 0) {
       // A trap broke!
       const buildings = (state as any).buildings;
       if (buildings && buildings.snareTrap) {
@@ -280,14 +299,14 @@ export const gameTick = () => {
     .plus(state.getResource(ResourceType.Meat))
     .plus(state.getResource(ResourceType.CuredMeat).times(5));  // CuredMeat counts 5x
 
-  settlersBeforeTick = state.settlers; // Update before starvation check
+  const settlersBeforeStarvation = state.settlers;
   state.checkStarvation();
 
   // If starvation occurred
-  if (totalFoodPoints.lte(0) && state.settlers.lessThan(settlersBeforeTick)) {
-    const deaths = settlersBeforeTick.minus(state.settlers);
+  if (totalFoodPoints.lte(0) && state.settlers.lessThan(settlersBeforeStarvation)) {
+    const deaths = settlersBeforeStarvation.minus(state.settlers);
     state.addLog(`${getStarvationMessage()} 损失了 ${deaths.toFixed(0)} 名族人。`, 'danger');
-  } else if (totalFoodPoints.lte(0) && state.settlers.equals(settlersBeforeTick)) {
+  } else if (totalFoodPoints.lte(0) && state.settlers.equals(settlersBeforeStarvation)) {
     // Food ran out but nobody died yet (grace period)
     state.addLog('食物已经耗尽！族人们正在忍受饥饿...', 'warning');
   }
@@ -295,17 +314,17 @@ export const gameTick = () => {
   // 8. Check for freezing (winter only)
   if (state.currentSeason === Season.Winter) {
     const woodBeforeCheck = state.getResource(ResourceType.Wood);
-    settlersBeforeTick = state.settlers; // Update before freeze check
+    const settlersBeforeFreezing = state.settlers;
 
     state.checkFreezing();
 
     const woodAfterCheck = state.getResource(ResourceType.Wood);
 
     // If freezing occurred
-    if (woodBeforeCheck.lte(0) && state.settlers.lessThan(settlersBeforeTick)) {
-      const deaths = settlersBeforeTick.minus(state.settlers);
+    if (woodBeforeCheck.lte(0) && state.settlers.lessThan(settlersBeforeFreezing)) {
+      const deaths = settlersBeforeFreezing.minus(state.settlers);
       state.addLog(`${getFreezingMessage()} 损失了 ${deaths.toFixed(0)} 名族人。`, 'danger');
-    } else if (woodAfterCheck.lte(0) && state.settlers.equals(settlersBeforeTick)) {
+    } else if (woodAfterCheck.lte(0) && state.settlers.equals(settlersBeforeFreezing)) {
       // Wood ran out but nobody froze yet
       state.addLog('木材已经耗尽！族人们在严寒中瑟瑟发抖...', 'warning');
     }
@@ -342,6 +361,25 @@ export const gameTick = () => {
     // Conditions not met, reset growth progress
     state.updateGrowthProgress(new Decimal(0));
   }
+
+  // ========== 10. Random Event System ==========
+  // Check for random events
+  const eventResult = state.checkRandomEvent ? state.checkRandomEvent(state) : null;
+  if (eventResult) {
+    const { result } = eventResult;
+
+    // Log the event result
+    state.addLog(result.message, result.logType);
+
+    // Handle special actions (for future UI implementation)
+    if (result.specialAction) {
+      // TODO: Display special action button in UI
+    }
+  }
+
+  // Update temporary effects (remove expired ones)
+  state.updateTemporaryEffects ? state.updateTemporaryEffects() : [];
+  // =============================================
 
   // Storage caps are automatically enforced in addResource()
   // Overflow resources are simply lost (cruel mode!)

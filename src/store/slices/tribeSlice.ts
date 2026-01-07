@@ -47,12 +47,18 @@ export const createTribeSlice: StateCreator<
   // Calculate idle population (thinkers)
   getIdlePopulation: () => {
     const state = get() as any;
-    const totalPopulation = state.settlers || new Decimal(0);
-    const assignedWorkers = state.jobs?.gatherers || new Decimal(0)
-                          .plus(state.jobs?.woodcutters || new Decimal(0))
-                          .plus(state.jobs?.stonecutters || new Decimal(0));
 
-    return Decimal.max(0, totalPopulation.minus(assignedWorkers));
+    const totalPopulation = state.settlers || new Decimal(0);
+
+    const gatherers = state.jobs?.gatherers || new Decimal(0);
+    const woodcutters = state.jobs?.woodcutters || new Decimal(0);
+    const stonecutters = state.jobs?.stonecutters || new Decimal(0);
+
+    const assignedWorkers = gatherers.plus(woodcutters).plus(stonecutters);
+
+    const result = Decimal.max(0, totalPopulation.minus(assignedWorkers));
+
+    return result;
   },
 
   // Assign workers to a job

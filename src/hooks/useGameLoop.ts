@@ -24,6 +24,7 @@ export const useGameLoop = () => {
       // Initialize lastTime on first frame
       if (lastTimeRef.current === 0) {
         lastTimeRef.current = currentTime;
+        return; // Skip first frame to prevent burst
       }
 
       // Calculate delta time in milliseconds
@@ -34,10 +35,13 @@ export const useGameLoop = () => {
       const adjustedDelta = deltaTime * gameSpeed;
       accumulatorRef.current += adjustedDelta;
 
-      // Process ticks as many times as we can
-      while (accumulatorRef.current >= TICK_INTERVAL) {
+      // Process ticks as many times as we can (with limit to prevent UI freeze)
+      let ticksThisFrame = 0;
+      const MAX_TICKS_PER_FRAME = 10;
+      while (accumulatorRef.current >= TICK_INTERVAL && ticksThisFrame < MAX_TICKS_PER_FRAME) {
         gameTick();
         accumulatorRef.current -= TICK_INTERVAL;
+        ticksThisFrame++;
       }
 
       // Continue the loop

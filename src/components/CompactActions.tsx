@@ -131,7 +131,7 @@ export const CompactActions = memo(() => {
     if (actionKey === 'hunt') {
       gameActions.addResource(ResourceType.Meat, new Decimal(2));
       const skinMultiplier = gameActions.getSkinDropRateMultiplier ? gameActions.getSkinDropRateMultiplier() : new Decimal(1);
-      const skinChance = 0.5 * skinMultiplier.toNumber();
+      const skinChance = new Decimal(0.5).times(skinMultiplier).toNumber();
 
       if (Math.random() < skinChance) {
         gameActions.addResource(ResourceType.Skin, new Decimal(1));

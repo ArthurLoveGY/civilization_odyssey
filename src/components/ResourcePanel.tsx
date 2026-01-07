@@ -1,9 +1,8 @@
-import { memo, useState, useEffect } from 'react';
+import { memo } from 'react';
 import { Apple, Trees, Shield, Users, Mountain, Lightbulb, Drumstick, Beef } from 'lucide-react';
-import { gameActions, useGameStore } from '../store/useGameStore';
+import { useGameUI } from '../contexts/GameUIContext';
 import { ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
-import Decimal from 'decimal.js';
 
 const RESOURCE_CONFIG = {
   [ResourceType.Food]: {
@@ -113,88 +112,20 @@ const ResourceDisplay = memo(({ type, value, storageCap }: { type: ResourceType;
 ResourceDisplay.displayName = 'ResourceDisplay';
 
 export const ResourcePanel = memo(() => {
-  const [resources, setResources] = useState({
-    food: '50',
-    wood: '20',
-    skin: '0',
-    stone: '0',
-    meat: '0',
-    curedMeat: '0',
-    ideas: '0',
-    settlers: '5',
-  });
-  const [storageCaps, setStorageCaps] = useState({
-    food: '100',
-    wood: '100',
-    skin: '50',
-    stone: '50',
-    meat: '30',
-    curedMeat: '100',
-  });
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      try {
-        const state = useGameStore.getState();
-
-        const food = gameActions.getResource ? gameActions.getResource(ResourceType.Food) : new Decimal(50);
-        const wood = gameActions.getResource ? gameActions.getResource(ResourceType.Wood) : new Decimal(20);
-        const skin = gameActions.getResource ? gameActions.getResource(ResourceType.Skin) : new Decimal(0);
-        const stone = gameActions.getResource ? gameActions.getResource(ResourceType.Stone) : new Decimal(0);
-        const meat = gameActions.getResource ? gameActions.getResource(ResourceType.Meat) : new Decimal(0);
-        const curedMeat = gameActions.getResource ? gameActions.getResource(ResourceType.CuredMeat) : new Decimal(0);
-
-        // Ideas is stored separately in techSlice, not in resources
-        const ideas = state.ideas || new Decimal(0);
-
-        const settlers = gameActions.getResource ? gameActions.getResource(ResourceType.Settlers) : new Decimal(5);
-
-        const foodCap = gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Food) : new Decimal(100);
-        const woodCap = gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Wood) : new Decimal(100);
-        const skinCap = gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Skin) : new Decimal(50);
-        const stoneCap = gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Stone) : new Decimal(50);
-        const meatCap = gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.Meat) : new Decimal(30);
-        const curedMeatCap = gameActions.getStorageCap ? gameActions.getStorageCap(ResourceType.CuredMeat) : new Decimal(100);
-
-        setResources({
-          food: food.toFixed(0),
-          wood: wood.toFixed(0),
-          skin: skin.toFixed(0),
-          stone: stone.toFixed(0),
-          meat: meat.toFixed(0),
-          curedMeat: curedMeat.toFixed(0),
-          ideas: ideas.toFixed(1), // Show 1 decimal for ideas
-          settlers: settlers.toFixed(0),
-        });
-
-        setStorageCaps({
-          food: foodCap.toFixed(0),
-          wood: woodCap.toFixed(0),
-          skin: skinCap.toFixed(0),
-          stone: stoneCap.toFixed(0),
-          meat: meatCap.toFixed(0),
-          curedMeat: curedMeatCap.toFixed(0),
-        });
-      } catch (e) {
-        // Ignore
-      }
-    }, 200);
-
-    return () => clearInterval(interval);
-  }, []);
+  const uiData = useGameUI();
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 shadow-sm">
       <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">资源</h2>
       <div className="space-y-3">
-        <ResourceDisplay type={ResourceType.Food} value={resources.food} storageCap={storageCaps.food} />
-        <ResourceDisplay type={ResourceType.Wood} value={resources.wood} storageCap={storageCaps.wood} />
-        <ResourceDisplay type={ResourceType.Skin} value={resources.skin} storageCap={storageCaps.skin} />
-        <ResourceDisplay type={ResourceType.Stone} value={resources.stone} storageCap={storageCaps.stone} />
-        <ResourceDisplay type={ResourceType.Meat} value={resources.meat} storageCap={storageCaps.meat} />
-        <ResourceDisplay type={ResourceType.CuredMeat} value={resources.curedMeat} storageCap={storageCaps.curedMeat} />
-        <ResourceDisplay type={ResourceType.Ideas} value={resources.ideas} />
-        <ResourceDisplay type={ResourceType.Settlers} value={resources.settlers} />
+        <ResourceDisplay type={ResourceType.Food} value={uiData.resources.food} storageCap={uiData.storageCaps.food} />
+        <ResourceDisplay type={ResourceType.Wood} value={uiData.resources.wood} storageCap={uiData.storageCaps.wood} />
+        <ResourceDisplay type={ResourceType.Skin} value={uiData.resources.skin} storageCap={uiData.storageCaps.skin} />
+        <ResourceDisplay type={ResourceType.Stone} value={uiData.resources.stone} storageCap={uiData.storageCaps.stone} />
+        <ResourceDisplay type={ResourceType.Meat} value={uiData.resources.meat} storageCap={uiData.storageCaps.meat} />
+        <ResourceDisplay type={ResourceType.CuredMeat} value={uiData.resources.curedMeat} storageCap={uiData.storageCaps.curedMeat} />
+        <ResourceDisplay type={ResourceType.Ideas} value={uiData.resources.ideas} />
+        <ResourceDisplay type={ResourceType.Settlers} value={uiData.resources.settlers} />
       </div>
     </div>
   );
