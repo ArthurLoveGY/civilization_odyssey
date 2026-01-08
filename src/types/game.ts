@@ -53,6 +53,7 @@ export enum BuildingType {
   DryingRack = 'dryingRack',  // Converts meat → cured meat
   TotemPole = 'totemPole',    // Auto-generates tradition (+0.05/sec)
   Graveyard = 'graveyard',     // Death conversion: each death → 50 tradition
+  TribalHall = 'tribalHall',    // Wonder building that completes Era 1
 }
 
 // Display names for buildings (Chinese)
@@ -66,6 +67,7 @@ export const BUILDING_NAMES: Record<BuildingType, string> = {
   [BuildingType.DryingRack]: '晾肉架',
   [BuildingType.TotemPole]: '图腾柱',
   [BuildingType.Graveyard]: '墓地',
+  [BuildingType.TribalHall]: '部落大厅',
 };
 
 // Bonfire state

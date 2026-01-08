@@ -27,12 +27,11 @@ LogEntry.displayName = 'LogEntry';
 export const LogPanel = memo(() => {
   const [logs, setLogs] = useState<Array<{ id: string; timestamp: Date; message: string; type: string }>>([]);
   const lastLogIdRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    const isMounted = useRef(true);
-
     const interval = setInterval(() => {
-      if (!isMounted.current) return;
+      if (!isMountedRef.current) return;
 
       const state = useGameStore.getState();
       const newLogs = state.logs.slice(-20); // Only keep last 20 logs
@@ -46,7 +45,7 @@ export const LogPanel = memo(() => {
     }, 200);
 
     return () => {
-      isMounted.current = false;
+      isMountedRef.current = false;
       clearInterval(interval);
     };
   }, []);

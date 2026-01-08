@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from 'react';
 import { Apple, Trees, Crosshair, Compass, Users, Sparkles } from 'lucide-react';
-import { gameActions } from '../store/useGameStore';
+import { gameActions, useGameStore } from '../store/useGameStore';
 import { ResourceType, ScoutingResult } from '../types/game';
 import { cn } from '../utils/cn';
 import Decimal from 'decimal.js';

@@ -410,7 +410,6 @@ export const gameTick = () => {
       state.setActiveSpecialAction(result.specialAction);
     }
   }
-  }
 
   // Update temporary effects (remove expired ones)
   state.updateTemporaryEffects ? state.updateTemporaryEffects() : [];

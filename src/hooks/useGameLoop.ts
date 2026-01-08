@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useGameUI } from '../contexts/GameUIContext';
 import { useGameStore } from '../store/useGameStore';
 import { gameTick } from '../game/tick';
 
@@ -6,7 +7,10 @@ const TICKS_PER_SECOND = 10; // 10 TPS
 const TICK_INTERVAL = 1000 / TICKS_PER_SECOND; // 100ms per tick
 
 export const useGameLoop = () => {
-  const { isPlaying, isPaused, gameSpeed } = useGameStore();
+  // Use GameUIContext for isPlaying and isPaused (prevents subscription loops)
+  const { isPlaying, isPaused } = useGameUI();
+  // gameSpeed can be accessed directly from store as it changes infrequently
+  const gameSpeed = useGameStore((state) => state.gameSpeed);
   const accumulatorRef = useRef(0);
   const lastTimeRef = useRef(0);
 
@@ -19,12 +23,17 @@ export const useGameLoop = () => {
     }
 
     let animationFrameId: number;
+    let tickCount = 0;
+    let isFirstFrame = true; // Track if this is the first frame
 
     const gameLoop = (currentTime: number) => {
       // Initialize lastTime on first frame
-      if (lastTimeRef.current === 0) {
+      if (isFirstFrame) {
         lastTimeRef.current = currentTime;
-        return; // Skip first frame to prevent burst
+        isFirstFrame = false;
+        // Don't return - schedule next frame immediately
+        animationFrameId = requestAnimationFrame(gameLoop);
+        return;
       }
 
       // Calculate delta time in milliseconds
@@ -42,9 +51,15 @@ export const useGameLoop = () => {
         gameTick();
         accumulatorRef.current -= TICK_INTERVAL;
         ticksThisFrame++;
+        tickCount++;
+
+        // Log every 100 ticks
+        if (tickCount % 100 === 0) {
+          console.log('[useGameLoop] Ticks processed:', tickCount);
+        }
       }
 
-      // Continue the loop
+      // Continue loop
       animationFrameId = requestAnimationFrame(gameLoop);
     };
 
@@ -53,6 +68,7 @@ export const useGameLoop = () => {
 
     // Cleanup
     return () => {
+      isFirstFrame = true;
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }

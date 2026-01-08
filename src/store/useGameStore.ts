@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import Decimal from 'decimal.js';
 import {
   GameStore,
@@ -16,6 +17,7 @@ import { createScoutingSlice } from './slices/scoutingSlice';
 import { createTribeSlice } from './slices/tribeSlice';
 import { createTechSlice } from './slices/techSlice';
 import { createEventSlice } from './slices/eventSlice';
+import { deepMergeAndRehydrate } from '../utils/persistence';
 
 // Game control slice
 const createGameSlice = (): GameSliceState & GameActions => ({
@@ -23,26 +25,42 @@ const createGameSlice = (): GameSliceState & GameActions => ({
   isPlaying: false,
   isPaused: false,
   gameSpeed: 1,
+  isEraCompleted: false,
   startGame: () => {},
   pauseGame: () => {},
   toggleGame: () => {},
   setGameSpeed: () => {},
 });
 
-// Create store without devtools to avoid subscription issues
-export const useGameStore = create<GameStore>()((set, get, api) => ({
-  ...createGameSlice(),
-  ...createResourceSlice(set, get, api),
-  ...createSeasonSlice(set, get, api),
-  ...createPopulationSlice(set, get, api),
-  ...createLogSlice(set, get, api),
-  ...createBonfireSlice(set, get, api),
-  ...createBuildingsSlice(set, get, api),
-  ...createScoutingSlice(set, get, api),
-  ...createTribeSlice(set, get, api),
-  ...createTechSlice(set, get, api),
-  ...createEventSlice(set, get, api),
-}));
+// Create store with persist middleware
+// Note: We use persist without devtools to avoid subscription issues
+export const useGameStore = create<GameStore>()(
+  persist(
+    (set, get, api) => ({
+      ...createGameSlice(),
+      ...createResourceSlice(set, get, api),
+      ...createSeasonSlice(set, get, api),
+      ...createPopulationSlice(set, get, api),
+      ...createLogSlice(set, get, api),
+      ...createBonfireSlice(set, get, api),
+      ...createBuildingsSlice(set, get, api),
+      ...createScoutingSlice(set, get, api),
+      ...createTribeSlice(set, get, api),
+      ...createTechSlice(set, get, api),
+      ...createEventSlice(set, get, api),
+    }),
+    {
+      name: 'civ-odyssey-save',
+      storage: createJSONStorage(() => localStorage),
+      // Custom merge function to rehydrate Decimal instances
+      merge: (persistedState: any, currentState) => {
+        return deepMergeAndRehydrate(persistedState, currentState);
+      },
+      // Version for future migrations
+      version: 1,
+    }
+  )
+);
 
 // Export actions directly for UI components
 export const gameActions = {
@@ -50,6 +68,15 @@ export const gameActions = {
   pauseGame: () => useGameStore.setState({ isPaused: true }),
   toggleGame: () => useGameStore.setState((s) => ({ isPaused: !s.isPaused })),
   setGameSpeed: (speed: number) => useGameStore.setState({ gameSpeed: speed }),
+  checkVictoryCondition: () => {
+    const state = useGameStore.getState();
+    const tribalHallCount = state.getBuildingCount ? state.getBuildingCount('tribalHall' as any) : new Decimal(0);
+
+    if (tribalHallCount.gte(1) && !state.isEraCompleted) {
+      useGameStore.setState({ isEraCompleted: true, isPaused: true });
+      state.addLog ? state.addLog('部落时代已完成！部落大厅已建成，文明的新篇章即将开始。', 'success') : null;
+    }
+  },
   addResource: (type: any, amount: any) => useGameStore.getState().addResource(type, amount),
   removeResource: (type: any, amount: any) => useGameStore.getState().removeResource(type, amount),
   removeResources: (resources: any) => {
@@ -101,4 +128,9 @@ export const gameActions = {
   setActiveSpecialAction: (action: any) => useGameStore.getState().setActiveSpecialAction(action),
   completeSpecialAction: () => useGameStore.getState().completeSpecialAction(),
   clearSpecialAction: () => useGameStore.getState().clearSpecialAction(),
+  // Persistence actions
+  resetSave: () => {
+    localStorage.removeItem('civ-odyssey-save');
+    window.location.reload();
+  },
 };

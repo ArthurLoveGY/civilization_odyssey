@@ -35,6 +35,7 @@ export interface GameSliceState {
   isPlaying: boolean;
   isPaused: boolean;
   gameSpeed: number;
+  isEraCompleted: boolean;
 }
 
 export interface BonfireSliceState {
@@ -66,6 +67,10 @@ export interface EventSliceState {
   currentTick: number;
   activeEvents: any[];
   temporaryEffects: any[];
+  activeSpecialAction: {
+    action: any;
+    startTime: number;
+  } | null;
 }
 
 // Combined store state
@@ -196,4 +201,7 @@ export interface EventActions {
   applyTemporaryEffect: (effect: any) => void;
   updateTemporaryEffects: () => any[];
   getBonfireConsumptionMultiplier: () => number;
+  setActiveSpecialAction: (action: any) => void;
+  completeSpecialAction: () => void;
+  clearSpecialAction: () => void;
 }

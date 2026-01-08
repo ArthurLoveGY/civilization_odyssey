@@ -1,6 +1,6 @@
 import { memo, useState, useEffect } from 'react';
 import { Home, Warehouse, Trees, Shield, Mountain, Crosshair, Drumstick, Scroll, Skull } from 'lucide-react';
-import { gameActions } from '../store/useGameStore';
+import { gameActions, useGameStore } from '../store/useGameStore';
 import { BuildingType, ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
 import Decimal from 'decimal.js';
@@ -60,6 +60,12 @@ const BUILDING_CONFIG = {
     description: '死亡转化：每名族人死亡获得 50 传统',
     category: 'culture' as const,
   },
+  [BuildingType.TribalHall]: {
+    name: '部落大厅',
+    icon: Scroll,
+    description: '统一各个氏族，我们将不再流浪。这是文明的基石。',
+    category: 'wonder' as const,
+  },
 };
 
 const CATEGORY_NAMES = {
@@ -67,6 +73,7 @@ const CATEGORY_NAMES = {
   storage: '存储建筑',
   survival: '生存设施',
   culture: '文化建筑',
+  wonder: '奇迹建筑',
 };
 
 const CATEGORY_COLORS = {
@@ -74,6 +81,7 @@ const CATEGORY_COLORS = {
   storage: 'bg-amber-50 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700',
   survival: 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-300 dark:border-emerald-700',
   culture: 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-300 dark:border-yellow-700',
+  wonder: 'text-amber-500',
 };
 
 export const BuildingsPanel = memo(() => {
@@ -87,6 +95,7 @@ export const BuildingsPanel = memo(() => {
     [BuildingType.DryingRack]: new Decimal(0),
     [BuildingType.TotemPole]: new Decimal(0),
     [BuildingType.Graveyard]: new Decimal(0),
+    [BuildingType.TribalHall]: new Decimal(0),
   });
 
   const [costs, setCosts] = useState<Record<BuildingType, string>>({} as Record<BuildingType, string>);
@@ -153,32 +162,6 @@ export const BuildingsPanel = memo(() => {
           if (cost[ResourceType.Ideas]?.greaterThan(0) && ideas.lessThan(cost[ResourceType.Ideas])) {
             canAffordBuilding = false;
           }
-          if (cost[ResourceType.Food]?.greaterThan(0)) {
-            costParts.push(`${cost[ResourceType.Food].toFixed(1)} 浆果`);
-          }
-          if (cost[ResourceType.Skin]?.greaterThan(0)) {
-            costParts.push(`${cost[ResourceType.Skin].toFixed(1)} 毛皮`);
-          }
-          if (cost[ResourceType.Stone]?.greaterThan(0)) {
-            costParts.push(`${cost[ResourceType.Stone].toFixed(1)} 石料`);
-          }
-
-          costs[buildingType] = costParts.join(' + ') || '免费';
-
-          // Check if affordable
-          let canAffordBuilding = true;
-          if (cost[ResourceType.Wood]?.greaterThan(0) && wood.lessThan(cost[ResourceType.Wood])) {
-            canAffordBuilding = false;
-          }
-          if (cost[ResourceType.Food]?.greaterThan(0) && food.lessThan(cost[ResourceType.Food])) {
-            canAffordBuilding = false;
-          }
-          if (cost[ResourceType.Skin]?.greaterThan(0) && skin.lessThan(cost[ResourceType.Skin])) {
-            canAffordBuilding = false;
-          }
-          if (cost[ResourceType.Stone]?.greaterThan(0) && stone.lessThan(cost[ResourceType.Stone])) {
-            canAffordBuilding = false;
-          }
 
           affordable[buildingType] = canAffordBuilding;
         });
@@ -215,6 +198,7 @@ export const BuildingsPanel = memo(() => {
         [BuildingType.DryingRack]: ['晾肉架搭建完成，可以开始加工肉干了。', '新的晾肉架建成了。'],
         [BuildingType.TotemPole]: ['图腾柱竖立完成，先祖的故事将永远流传。', '族人们制作了新的图腾柱，部落精神更加凝聚。'],
         [BuildingType.Graveyard]: ['墓地修建完成，逝者将得到安息。', '新的墓地建成了，我们对逝者表示敬意。'],
+        [BuildingType.TribalHall]: ['部落大厅建成了！各个氏族终于在共同屋檐下团结。', '这是部落历史上最重要的时刻，标志着文明曙光的到来。'],
       };
       const buildingMessages = messages[type] || ['建筑完成。'];
       gameActions.addLog(buildingMessages[Math.floor(Math.random() * buildingMessages.length)], 'success');
@@ -280,16 +264,16 @@ export const BuildingsPanel = memo(() => {
 
                     <button
                       onClick={() => handleBuild(type)}
-                      disabled={!canAfford[type]}
+                      disabled={!canAfford[type] || (config.category === 'wonder' && buildingCounts[type]?.gte(1))}
                       className={cn(
                         'w-full py-2 px-4 rounded-lg text-sm font-medium transition-all',
                         'active:scale-95',
-                        canAfford[type]
+                        canAfford[type] && !(config.category === 'wonder' && buildingCounts[type]?.gte(1))
                           ? 'bg-green-600 hover:bg-green-700 text-white'
                           : 'bg-gray-400 text-gray-600 cursor-not-allowed'
                       )}
                     >
-                      建造
+                      {config.category === 'wonder' && buildingCounts[type]?.gte(1) ? '已达到上限' : '建造'}
                     </button>
                   </div>
                 );

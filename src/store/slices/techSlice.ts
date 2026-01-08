@@ -257,6 +257,7 @@ export const createTechSlice: StateCreator<
 export interface TechSliceState {
   researched: TechType[];
   ideas: Decimal;
+  tradition: Decimal;
   councilGround: {
     lastUsedTime: number;
     cooldown: number;

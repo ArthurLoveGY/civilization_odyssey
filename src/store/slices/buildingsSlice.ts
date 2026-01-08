@@ -8,7 +8,7 @@ const BUILDING_CONFIG: Record<BuildingType, {
   costMultiplier: Decimal;
   populationBonus?: Decimal;
   storageBonus?: Partial<Record<ResourceType, Decimal>>;
-  category?: 'population' | 'storage' | 'survival' | 'culture';
+  category?: 'population' | 'storage' | 'survival' | 'culture' | 'wonder';
 }> = {
   [BuildingType.Tent]: {
     baseCost: {
@@ -99,6 +99,16 @@ const BUILDING_CONFIG: Record<BuildingType, {
     costMultiplier: new Decimal(1.5),
     category: 'culture',
   },
+  [BuildingType.TribalHall]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(2000),
+      [ResourceType.Stone]: new Decimal(1000),
+      [ResourceType.Tradition]: new Decimal(500),
+      [ResourceType.Ideas]: new Decimal(1000),
+    },
+    costMultiplier: new Decimal(1.0), // No exponential scaling for wonder
+    category: 'wonder',
+  },
 };
 
 // Base storage caps (without buildings)
@@ -185,6 +195,11 @@ export const createBuildingsSlice: StateCreator<
       baseCost: BUILDING_CONFIG[BuildingType.Graveyard].baseCost,
       costMultiplier: BUILDING_CONFIG[BuildingType.Graveyard].costMultiplier,
     },
+    tribalHall: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.TribalHall].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.TribalHall].costMultiplier,
+    },
   } as any,
 
   storageCaps: {
@@ -243,6 +258,16 @@ export const createBuildingsSlice: StateCreator<
       const buildings = state.buildings as any;
       const building = buildings[type];
 
+      // Check maxCount for wonder category
+      const config = BUILDING_CONFIG[type];
+      if (config.category === 'wonder' && building.count.gte(1)) {
+        return state; // Max 1 wonder allowed - return unchanged state
+      }
+
+      // Track if this is Tribal Hall and it's the first one being built
+      const isTribalHall = type === 'tribalHall' as any;
+      const isFirstTribalHall = isTribalHall && building.count.equals(0);
+
       // Calculate cost
       const costs = calculateBuildingCost(
         building.baseCost,
@@ -281,6 +306,19 @@ export const createBuildingsSlice: StateCreator<
           });
         }
       });
+
+      // Trigger victory check when Tribal Hall is built
+      if (isTribalHall && isFirstTribalHall) {
+        // Era completed!
+        setTimeout(() => {
+          set((s: any) => ({
+            ...s,
+            isEraCompleted: true,
+            isPaused: true,
+          }));
+          (get() as any).addLog ? (get() as any).addLog('部落时代已完成！部落大厅已建成，文明的新篇章即将开始。', 'success') : null;
+        }, 0);
+      }
 
       return {
         resources,
