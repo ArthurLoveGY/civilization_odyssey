@@ -1,8 +1,7 @@
 import { memo, useState, useEffect } from 'react';
 import { Plus, Minus, Lightbulb } from 'lucide-react';
 import { gameActions, useGameStore } from '../store/useGameStore';
-import { JobType, ResourceType, Season, BonfireStatus } from '../types/game';
-import { cn } from '../utils/cn';
+import { JobType, ResourceType } from '../types/game';
 import Decimal from 'decimal.js';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -98,8 +97,7 @@ export const TribalManagementPanel = memo(() => {
   const [totalPop, setTotalPop] = useState<Decimal>(new Decimal(5));
   const [idlePop, setIdlePop] = useState<Decimal>(new Decimal(5));
 
-  // 新增：叙事者状态
-  const [storytellerStatus, setStorytellerStatus] = useState<{
+  const [storytellerStatus] = useState<{
     isInspired: boolean;
     message: string;
   }>({
@@ -163,17 +161,19 @@ export const TribalManagementPanel = memo(() => {
         });
 
       } catch (e) {
-        // Ignore
       }
     }, 200);
 
-    const handleAddWorker = (jobType: JobType) => {
-      gameActions.assignWorker(jobType, new Decimal(1));
-    };
+    return () => clearInterval(interval);
+  }, []);
 
-    const handleRemoveWorker = (jobType: JobType) => {
-      gameActions.removeWorker(jobType, new Decimal(1));
-    };
+  const handleAddWorker = (jobType: JobType) => {
+    gameActions.assignWorker(jobType, new Decimal(1));
+  };
+
+  const handleRemoveWorker = (jobType: JobType) => {
+    gameActions.removeWorker(jobType, new Decimal(1));
+  };
 
   return (
     <Card className="shadow-sm">
@@ -182,7 +182,6 @@ export const TribalManagementPanel = memo(() => {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Population summary */}
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-blue-200 dark:border-blue-800">
           <div className="flex items-center justify-between text-sm mb-2">
             <span className="text-gray-700 dark:text-gray-300">总人口</span>
@@ -195,7 +194,6 @@ export const TribalManagementPanel = memo(() => {
           </div>
         </div>
 
-        {/* Storyteller status - 新增 */}
         <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-purple-200 dark:border-purple-800">
           <div className="flex items-center justify-between mb-2">
             <Lightbulb className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -213,7 +211,6 @@ export const TribalManagementPanel = memo(() => {
           </div>
         </div>
 
-        {/* Job assignments */}
         <div className="space-y-4">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
             职业分配
