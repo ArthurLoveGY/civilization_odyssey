@@ -47,12 +47,12 @@ const TechCard = memo(({
                 ? 'text-green-900 dark:text-green-100'
                 : 'text-gray-900 dark:text-gray-100'
             )}>
-              {tech.name}
-            </h3>
-            {isResearched && (
-              <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-            )}
-          </div>
+            {tech.name}
+              </h3>
+              {isResearched && (
+                <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              )}
+        </div>
           <p className={cn(
             'text-sm mt-1',
             isResearched
