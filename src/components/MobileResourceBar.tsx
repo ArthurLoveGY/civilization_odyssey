@@ -4,6 +4,8 @@ import { gameActions, useGameStore } from '../store/useGameStore';
 import { ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
 import Decimal from 'decimal.js';
+import { Collapsible, CollapsibleContent } from './ui/collapsible';
+import { Button } from './ui/button';
 
 const MOBILE_RESOURCE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   [ResourceType.Food]: Apple,
@@ -62,22 +64,23 @@ export const MobileResourceBar = memo(() => {
     <>
       {/* Fixed top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-neutral-900 border-b border-neutral-800 px-4 py-2">
-        <button
+        <Button
+          variant="ghost"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-between gap-2"
+          className="w-full flex items-center justify-between text-white"
         >
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               <Apple className="w-4 h-4 text-red-500" />
-              <span className="text-sm font-medium text-white">{resources.food}</span>
+              <span className="text-sm font-medium">{resources.food}</span>
             </div>
             <div className="flex items-center gap-1">
               <Trees className="w-4 h-4 text-amber-500" />
-              <span className="text-sm font-medium text-white">{resources.wood}</span>
+              <span className="text-sm font-medium">{resources.wood}</span>
             </div>
             <div className="flex items-center gap-1">
               <Users className="w-4 h-4 text-blue-500" />
-              <span className="text-sm font-medium text-white">{settlers}</span>
+              <span className="text-sm font-medium">{settlers}</span>
             </div>
           </div>
           <ChevronDown
@@ -86,12 +89,12 @@ export const MobileResourceBar = memo(() => {
               isOpen && 'rotate-180'
             )}
           />
-        </button>
+        </Button>
       </div>
 
-      {/* Expandable drawer */}
-      {isOpen && (
-        <div className="lg:hidden fixed top-[44px] left-0 right-0 z-30 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800 p-4">
+      {/* Collapsible drawer */}
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleContent className="lg:hidden fixed top-[44px] left-0 right-0 z-30 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800 p-4">
           <div className="grid grid-cols-3 gap-3">
             {(Object.keys(resources) as Array<keyof typeof resources>).map((key) => {
               const Icon = MOBILE_RESOURCE_ICONS[key as ResourceType];
@@ -122,8 +125,8 @@ export const MobileResourceBar = memo(() => {
               <div className="text-lg font-bold text-white mt-1">{settlers}</div>
             </div>
           </div>
-        </div>
-      )}
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Spacer for fixed header */}
       <div className="lg:hidden h-[44px]" />
