@@ -3,6 +3,9 @@ import { Apple, Trees, Shield, Users, Mountain, Lightbulb, Drumstick, Beef, Scro
 import { useGameUI } from '../contexts/GameUIContext';
 import { ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Progress } from './ui/progress';
+import { Alert, AlertDescription } from './ui/alert';
 
 const RESOURCE_CONFIG = {
   [ResourceType.Food]: {
@@ -76,42 +79,51 @@ const ResourceDisplay = memo(({ type, value, storageCap }: { type: ResourceType;
   }
 
   return (
-    <div className={cn('flex items-center gap-3 p-3 rounded-lg', config.bgColor)}>
-      <Icon className={cn('w-5 h-5 flex-shrink-0', config.color)} />
-      <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-center mb-1">
-          <div className="text-sm text-gray-600 dark:text-gray-400">{config.name}</div>
-          {showStorage && (
-            <div className="text-xs text-gray-500 dark:text-gray-500">
-              {value} / {storageCap}
-            </div>
-          )}
-        </div>
-        <div className={cn('text-lg font-bold', config.color)}>{value}</div>
-
-        {/* Storage cap progress bar */}
-        {showStorage && (
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
-            <div
-              className={cn(
-                'h-1.5 rounded-full transition-colors',
-                percentage > 90 ? 'bg-red-500' :
-                percentage > 70 ? 'bg-yellow-500' :
-                'bg-green-500'
+    <Card className={cn(config.bgColor, 'border-transparent')}>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-3">
+          <Icon className={cn('w-5 h-5 flex-shrink-0', config.color)} />
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-center mb-1">
+              <div className="text-sm text-gray-600 dark:text-gray-400">{config.name}</div>
+              {showStorage && (
+                <div className="text-xs text-gray-500 dark:text-gray-500">
+                  {value} / {storageCap}
+                </div>
               )}
-              style={{ width: `${Math.min(percentage, 100)}%` }}
-            />
-          </div>
-        )}
+            </div>
+            <div className={cn('text-lg font-bold', config.color)}>{value}</div>
 
-        {/* Warning when approaching cap */}
-        {showStorage && percentage >= 80 && (
-          <div className="text-xs text-red-500 mt-1">
-            警告：存储空间不足
+            {/* Storage cap progress bar */}
+            {showStorage && (
+              <Progress
+                value={percentage}
+                className="h-1.5 mt-1"
+              >
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-colors',
+                    percentage > 90 ? 'bg-red-500' :
+                    percentage > 70 ? 'bg-yellow-500' :
+                    'bg-green-500'
+                  )}
+                  style={{ width: `${Math.min(percentage, 100)}%` }}
+                />
+              </Progress>
+            )}
+
+            {/* Warning when approaching cap */}
+            {showStorage && percentage >= 80 && (
+              <Alert className="mt-2 py-1">
+                <AlertDescription className="text-xs">
+                  警告：存储空间不足
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 });
 
@@ -121,9 +133,11 @@ export const ResourcePanel = memo(() => {
   const uiData = useGameUI();
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 shadow-sm">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">资源</h2>
-      <div className="space-y-3">
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle>资源</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
         <ResourceDisplay type={ResourceType.Food} value={uiData.resources.food} storageCap={uiData.storageCaps.food} />
         <ResourceDisplay type={ResourceType.Wood} value={uiData.resources.wood} storageCap={uiData.storageCaps.wood} />
         <ResourceDisplay type={ResourceType.Skin} value={uiData.resources.skin} storageCap={uiData.storageCaps.skin} />
@@ -133,8 +147,8 @@ export const ResourcePanel = memo(() => {
         <ResourceDisplay type={ResourceType.Ideas} value={uiData.resources.ideas} />
         <ResourceDisplay type={ResourceType.Tradition} value={uiData.resources.tradition} storageCap={uiData.storageCaps.tradition} />
         <ResourceDisplay type={ResourceType.Settlers} value={uiData.resources.settlers} />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 });
 

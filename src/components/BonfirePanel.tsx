@@ -4,6 +4,11 @@ import { gameActions, useGameStore } from '../store/useGameStore';
 import { BonfireStatus, ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
 import Decimal from 'decimal.js';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Progress } from './ui/progress';
+import { Button } from './ui/button';
+import { Switch } from './ui/switch';
+import { Badge } from './ui/badge';
 
 const BONFIRE_CONFIG = {
   [BonfireStatus.Burning]: {
@@ -69,76 +74,76 @@ export const BonfirePanel = memo(() => {
     }
   };
 
-  const handleAutoRefuel = () => {
+  const handleAutoRefuel = (checked: boolean) => {
     if (gameActions.setAutoRefuel) {
-      gameActions.setAutoRefuel(!autoRefuel);
-      setAutoRefuelState(!autoRefuel);  // Immediate UI update
+      gameActions.setAutoRefuel(checked);
+      setAutoRefuelState(checked);
     }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">篝火</h2>
-        <div className={cn('flex items-center gap-2', config.color)}>
-          <Icon className="w-5 h-5" />
-          <span className="text-sm font-medium">{config.message}</span>
+    <Card className="shadow-sm">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>篝火</CardTitle>
+          <Badge variant="outline" className={cn(config.color, config.bgColor)}>
+            <Icon className="w-4 h-4 mr-1" />
+            <span className="text-sm font-medium">{config.message}</span>
+          </Badge>
         </div>
-      </div>
+      </CardHeader>
 
-      {/* Fuel progress bar */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400">燃料</span>
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            {fuel.toFixed(0)} / {maxFuel.toFixed(0)}
-          </span>
+      <CardContent className="space-y-4">
+        {/* Fuel progress bar */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">燃料</span>
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {fuel.toFixed(0)} / {maxFuel.toFixed(0)}
+            </span>
+          </div>
+          <Progress
+            value={fuelPercentage}
+            className="h-3"
+          >
+            <div
+              className={cn(
+                'h-full transition-all rounded-full',
+                bonfireStatus === BonfireStatus.Burning && 'bg-orange-500',
+                bonfireStatus === BonfireStatus.LowFuel && 'bg-yellow-500',
+                bonfireStatus === BonfireStatus.Extinguished && 'bg-red-500'
+              )}
+              style={{ width: `${Math.min(fuelPercentage, 100)}%` }}
+            />
+          </Progress>
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-          <div
-            className={cn(
-              'h-3 rounded-full transition-all',
-              bonfireStatus === BonfireStatus.Burning && 'bg-orange-500',
-              bonfireStatus === BonfireStatus.LowFuel && 'bg-yellow-500',
-              bonfireStatus === BonfireStatus.Extinguished && 'bg-red-500'
-            )}
-            style={{ width: `${Math.min(fuelPercentage, 100)}%` }}
-          />
+
+        {/* Buttons */}
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleAddFuel}
+            className="flex-1 bg-amber-600 hover:bg-amber-700"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            添加燃料 (-5 木材)
+          </Button>
+
+          <div className="flex items-center gap-2">
+            <Switch
+              id="auto-refuel"
+              checked={autoRefuel}
+              onCheckedChange={handleAutoRefuel}
+            />
+            <label
+              htmlFor="auto-refuel"
+              className="text-sm font-medium cursor-pointer"
+            >
+              自动加柴
+            </label>
+          </div>
         </div>
-      </div>
-
-      {/* Buttons */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleAddFuel}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg',
-            'font-medium text-white transition-all shadow-sm',
-            'active:scale-95',
-            'bg-amber-600 hover:bg-amber-700'
-          )}
-        >
-          <Plus className="w-4 h-4" />
-          添加燃料 (-5 木材)
-        </button>
-
-        <button
-          onClick={handleAutoRefuel}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg border-2',
-            'font-medium transition-all',
-            'active:scale-95',
-            autoRefuel
-              ? 'bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
-              : 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400'
-          )}
-        >
-          <span className="text-sm">
-            {autoRefuel ? '自动：开' : '自动：关'}
-          </span>
-        </button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 });
 
