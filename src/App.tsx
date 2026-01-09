@@ -2,10 +2,12 @@ import { memo, useState } from 'react';
 import { useGameLoop } from './hooks/useGameLoop';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { GameUIProvider } from './contexts/GameUIContext';
+import { useGameStore } from './store/useGameStore';
 import { SeasonDisplay } from './components/SeasonDisplay';
 import { LogPanel } from './components/LogPanel';
 import { GameControls } from './components/GameControls';
 import { ThemeToggle } from './components/ThemeToggle';
+import { SaveControls } from './components/SaveControls';
 import { ResourcePanel } from './components/ResourcePanel';
 import { FoodStatusPanel } from './components/FoodStatusPanel';
 import { BonfirePanel } from './components/BonfirePanel';
@@ -15,12 +17,14 @@ import { TechTreePanel } from './components/TechTreePanel';
 import { TribalManagementPanel } from './components/TribalManagementPanel';
 import { PopulationInfo } from './components/PopulationInfo';
 import { MobileResourceBar } from './components/MobileResourceBar';
+import { GovernmentPanel } from './components/GovernmentPanel';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/Tabs';
-import { Home, Users, Hammer, Lightbulb } from 'lucide-react';
+import { Home, Users, Hammer, Lightbulb, Crown } from 'lucide-react';
 
 const AppContent = memo(() => {
   useGameLoop();
   const [activeTab, setActiveTab] = useState('camp');
+  const currentEra = useGameStore((state) => state.currentEra);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
@@ -33,12 +37,15 @@ const AppContent = memo(() => {
                 <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                   文明：奥德赛
                 </h1>
-                <p className="text-gray-600 dark:text-gray-500 text-xs">Era 1: 部落时代</p>
+                <p className="text-gray-600 dark:text-gray-500 text-xs">
+                  {currentEra === 'tribal' ? 'Era 1: 部落时代' : 'Era 2: 王国时代'}
+                </p>
               </div>
               <SeasonDisplay />
             </div>
             <div className="flex items-center gap-3">
               <GameControls />
+              <SaveControls />
               <ThemeToggle />
             </div>
           </div>
@@ -65,50 +72,79 @@ const AppContent = memo(() => {
               {/* Desktop Tabs */}
               <div className="hidden lg:block">
                 <TabsList>
-                  <TabsTrigger value="camp" icon={<Home className="w-4 h-4" />}>
-                    营地
-                  </TabsTrigger>
-                  <TabsTrigger value="tribe" icon={<Users className="w-4 h-4" />}>
-                    部落
-                  </TabsTrigger>
-                  <TabsTrigger value="build" icon={<Hammer className="w-4 h-4" />}>
-                    建设
-                  </TabsTrigger>
-                  <TabsTrigger value="science" icon={<Lightbulb className="w-4 h-4" />}>
-                    知识
-                  </TabsTrigger>
+                  {currentEra === 'tribal' ? (
+                    <>
+                      <TabsTrigger value="camp" icon={<Home className="w-4 h-4" />}>
+                        营地
+                      </TabsTrigger>
+                      <TabsTrigger value="tribe" icon={<Users className="w-4 h-4" />}>
+                        部落
+                      </TabsTrigger>
+                      <TabsTrigger value="build" icon={<Hammer className="w-4 h-4" />}>
+                        建设
+                      </TabsTrigger>
+                      <TabsTrigger value="science" icon={<Lightbulb className="w-4 h-4" />}>
+                        知识
+                      </TabsTrigger>
+                    </>
+                  ) : (
+                    <>
+                      <TabsTrigger value="government" icon={<Crown className="w-4 h-4" />}>
+                        政务
+                      </TabsTrigger>
+                      <TabsTrigger value="build" icon={<Hammer className="w-4 h-4" />}>
+                        建设
+                      </TabsTrigger>
+                    </>
+                  )}
                 </TabsList>
               </div>
 
               {/* Tab Contents */}
               <div className="space-y-4">
-                {/* Camp Tab */}
-                <TabsContent value="camp">
-                  <div className="space-y-4">
-                    <BonfirePanel />
-                    <ActionPanel />
-                  </div>
-                </TabsContent>
+                {currentEra === 'tribal' ? (
+                  <>
+                    {/* Camp Tab */}
+                    <TabsContent value="camp">
+                      <div className="space-y-4">
+                        <BonfirePanel />
+                        <ActionPanel />
+                      </div>
+                    </TabsContent>
 
-                {/* Tribe Tab */}
-                <TabsContent value="tribe">
-                  <div className="space-y-4">
-                    <TribalManagementPanel />
-                    <div className="lg:hidden">
-                      <PopulationInfo />
-                    </div>
-                  </div>
-                </TabsContent>
+                    {/* Tribe Tab */}
+                    <TabsContent value="tribe">
+                      <div className="space-y-4">
+                        <TribalManagementPanel />
+                        <div className="lg:hidden">
+                          <PopulationInfo />
+                        </div>
+                      </div>
+                    </TabsContent>
 
-                {/* Build Tab */}
-                <TabsContent value="build">
-                  <BuildingsPanel />
-                </TabsContent>
+                    {/* Build Tab */}
+                    <TabsContent value="build">
+                      <BuildingsPanel />
+                    </TabsContent>
 
-                {/* Science Tab */}
-                <TabsContent value="science">
-                  <TechTreePanel />
-                </TabsContent>
+                    {/* Science Tab */}
+                    <TabsContent value="science">
+                      <TechTreePanel />
+                    </TabsContent>
+                  </>
+                ) : (
+                  <>
+                    {/* Government Tab (Era 2) */}
+                    <TabsContent value="government">
+                      <GovernmentPanel />
+                    </TabsContent>
+
+                    {/* Build Tab (Era 2) */}
+                    <TabsContent value="build">
+                      <BuildingsPanel />
+                    </TabsContent>
+                  </>
+                )}
               </div>
             </Tabs>
           </section>
@@ -136,57 +172,89 @@ const AppContent = memo(() => {
       {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-neutral-900 border-t border-neutral-800">
         <div className="grid grid-cols-4 gap-1 p-2">
-          <button
-            onClick={() => setActiveTab('camp')}
-            className={cn(
-              'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
-              activeTab === 'camp'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-neutral-800'
-            )}
-          >
-            <Home className="w-5 h-5" />
-            <span className="text-xs">营地</span>
-          </button>
+          {currentEra === 'tribal' ? (
+            <>
+              <button
+                onClick={() => setActiveTab('camp')}
+                className={cn(
+                  'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
+                  activeTab === 'camp'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-neutral-800'
+                )}
+              >
+                <Home className="w-5 h-5" />
+                <span className="text-xs">营地</span>
+              </button>
 
-          <button
-            onClick={() => setActiveTab('tribe')}
-            className={cn(
-              'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
-              activeTab === 'tribe'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-neutral-800'
-            )}
-          >
-            <Users className="w-5 h-5" />
-            <span className="text-xs">部落</span>
-          </button>
+              <button
+                onClick={() => setActiveTab('tribe')}
+                className={cn(
+                  'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
+                  activeTab === 'tribe'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-neutral-800'
+                )}
+              >
+                <Users className="w-5 h-5" />
+                <span className="text-xs">部落</span>
+              </button>
 
-          <button
-            onClick={() => setActiveTab('build')}
-            className={cn(
-              'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
-              activeTab === 'build'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-neutral-800'
-            )}
-          >
-            <Hammer className="w-5 h-5" />
-            <span className="text-xs">建设</span>
-          </button>
+              <button
+                onClick={() => setActiveTab('build')}
+                className={cn(
+                  'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
+                  activeTab === 'build'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-neutral-800'
+                )}
+              >
+                <Hammer className="w-5 h-5" />
+                <span className="text-xs">建设</span>
+              </button>
 
-          <button
-            onClick={() => setActiveTab('science')}
-            className={cn(
-              'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
-              activeTab === 'science'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-neutral-800'
-            )}
-          >
-            <Lightbulb className="w-5 h-5" />
-            <span className="text-xs">知识</span>
-          </button>
+              <button
+                onClick={() => setActiveTab('science')}
+                className={cn(
+                  'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
+                  activeTab === 'science'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-neutral-800'
+                )}
+              >
+                <Lightbulb className="w-5 h-5" />
+                <span className="text-xs">知识</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setActiveTab('government')}
+                className={cn(
+                  'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
+                  activeTab === 'government'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-neutral-800'
+                )}
+              >
+                <Crown className="w-5 h-5" />
+                <span className="text-xs">政务</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('build')}
+                className={cn(
+                  'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all',
+                  activeTab === 'build'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-neutral-800'
+                )}
+              >
+                <Hammer className="w-5 h-5" />
+                <span className="text-xs">建设</span>
+              </button>
+            </>
+          )}
         </div>
       </nav>
 

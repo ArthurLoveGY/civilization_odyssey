@@ -98,3 +98,122 @@ export function toDecimal(value: any): Decimal {
     return new Decimal(0);
   }
 }
+
+/**
+ * 存档元数据接口
+ */
+export interface SaveMetadata {
+  exists: boolean;
+  totalDays?: number;
+  settlers?: number;
+  currentSeason?: string;
+  lastSaveTime?: number;
+}
+
+/**
+ * 导出当前存档为 Base64 字符串
+ *
+ * 此函数会从 localStorage 读取游戏状态，将其序列化为 JSON，
+ * 然后使用 Base64 编码，最后添加版本号和元数据。
+ *
+ * @returns Base64 编码的存档字符串
+ * @throws 如果 localStorage 中没有存档数据
+ */
+export function exportSave(): string {
+  const STORAGE_KEY = 'civ-odyssey-save';
+  const savedData = localStorage.getItem(STORAGE_KEY);
+
+  if (!savedData) {
+    throw new Error('没有找到存档数据');
+  }
+
+  // 解析 JSON 得到完整状态对象
+  const state = JSON.parse(savedData);
+
+  // 添加元数据
+  const exportData = {
+    version: 1,
+    timestamp: Date.now(),
+    state: state
+  };
+
+  // 转换为 JSON 并 Base64 编码
+  // 使用 encodeURIComponent 处理中文字符
+  const jsonString = JSON.stringify(exportData);
+  const base64 = btoa(unescape(encodeURIComponent(jsonString)));
+
+  return base64;
+}
+
+/**
+ * 从 Base64 字符串导入存档
+ *
+ * 此函数会解码 Base64 字符串，解析 JSON，验证版本号，
+ * 然后将状态写入 localStorage，最后刷新页面以触发 zustand persist 重新读取。
+ *
+ * @param base64String Base64 编码的存档字符串
+ * @throws 如果字符串格式无效或版本不兼容
+ */
+export function importSave(base64String: string): void {
+  try {
+    // Base64 解码（使用对应的解码逻辑处理中文）
+    const jsonString = decodeURIComponent(escape(atob(base64String)));
+
+    // 解析 JSON
+    const importData = JSON.parse(jsonString);
+
+    // 验证结构
+    if (!importData.version || !importData.state) {
+      throw new Error('存档格式无效');
+    }
+
+    // 版本检查（未来支持迁移）
+    if (importData.version !== 1) {
+      throw new Error(`不支持的存档版本: ${importData.version}`);
+    }
+
+    // 写入 localStorage
+    const STORAGE_KEY = 'civ-odyssey-save';
+    const stateToSave = JSON.stringify(importData.state);
+    localStorage.setItem(STORAGE_KEY, stateToSave);
+
+    // 重新加载页面以触发 zustand persist 重新读取
+    window.location.reload();
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`导入失败: ${error.message}`);
+    }
+    throw new Error('导入失败: 未知错误');
+  }
+}
+
+/**
+ * 获取存档元数据
+ *
+ * 此函数从 localStorage 读取存档并提取元数据，用于 UI 显示。
+ *
+ * @returns 存档元数据，如果不存在则返回 exists: false
+ */
+export function getSaveMetadata(): SaveMetadata | null {
+  const STORAGE_KEY = 'civ-odyssey-save';
+  const savedData = localStorage.getItem(STORAGE_KEY);
+
+  if (!savedData) {
+    return { exists: false };
+  }
+
+  try {
+    const state = JSON.parse(savedData);
+
+    return {
+      exists: true,
+      totalDays: state.totalDays,
+      settlers: state.resources?.settlers,
+      currentSeason: state.currentSeason,
+      lastSaveTime: Date.now() // 无法获取真实保存时间，使用当前时间近似
+    };
+  } catch (error) {
+    console.error('Failed to parse save metadata:', error);
+    return { exists: false };
+  }
+}

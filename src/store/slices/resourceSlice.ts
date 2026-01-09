@@ -12,6 +12,7 @@ export const createResourceSlice: StateCreator<
 > = (set, get) => ({
   // Initial state
   resources: {
+    // Era 1 Resources
     [ResourceType.Food]: new Decimal(50),     // Start with 50 food
     [ResourceType.Wood]: new Decimal(20),     // Start with 20 wood
     [ResourceType.Skin]: new Decimal(0),      // Start with 0 skin
@@ -21,8 +22,17 @@ export const createResourceSlice: StateCreator<
     [ResourceType.Ideas]: new Decimal(0),     // Start with 0 ideas
     [ResourceType.Tradition]: new Decimal(0), // Start with 0 tradition
     [ResourceType.Settlers]: new Decimal(5),  // Start with 5 settlers
-  },
+
+     // Era 2 Resources (initialize at 0, added when Era 2 starts)
+     [ResourceType.Gold]: new Decimal(0),        // Start with 0 gold
+     [ResourceType.IronOre]: new Decimal(0),     // Start with 0 iron ore
+     [ResourceType.IronIngot]: new Decimal(0),   // Start with 0 iron ingot
+     [ResourceType.Science]: new Decimal(0),     // Start with 0 science
+     [ResourceType.Culture]: new Decimal(0),     // Start with 0 culture
+     [ResourceType.Manpower]: new Decimal(0),    // Start with 0 manpower
+   },
   storageCaps: {
+    // Era 1 Resources
     food: new Decimal(100),
     wood: new Decimal(100),
     skin: new Decimal(50),
@@ -30,7 +40,16 @@ export const createResourceSlice: StateCreator<
     meat: new Decimal(30),      // Meat spoils faster
     curedMeat: new Decimal(100), // Cured meat lasts longer
     tradition: new Decimal(1000), // Tradition cap (Era 2 unlock requires 500)
-    // Ideas has no storage cap (knowledge is unlimited!)
+
+     // Era 2 Resources
+     gold: new Decimal(1000),     // Gold storage cap
+     ironOre: new Decimal(500),   // Iron ore cap
+     ironIngot: new Decimal(200), // Iron ingot cap
+     science: new Decimal(1000),  // Science cap (knowledge is vast)
+     culture: new Decimal(1000),   // Culture cap
+     manpower: new Decimal(100),  // Manpower cap
+
+     // Ideas has no storage cap (knowledge is unlimited!)
   },
 
   // Add resource (with storage cap enforcement)

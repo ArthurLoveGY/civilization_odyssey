@@ -415,6 +415,97 @@ export const gameTick = () => {
   state.updateTemporaryEffects ? state.updateTemporaryEffects() : [];
   // =============================================
 
+  // ========== ERA 2: KINGDOM LOGIC ==========
+  if (state.currentEra === 'kingdom') {
+    // 1. Collect tax (every tick)
+    state.collectTax ? state.collectTax() : null;
+
+    // 2. Update happiness
+    state.updateHappiness ? state.updateHappiness() : null;
+
+    // 3. Social class production
+    const efficiency = state.getProductionEfficiency ? state.getProductionEfficiency() : { efficiency: new Decimal(1.0) };
+
+    // Food production from peasants
+    const peasantFoodProduction = state.calculateClassProduction ? state.calculateClassProduction(ResourceType.Food) : new Decimal(0);
+    if (peasantFoodProduction.greaterThan(0)) {
+      state.addResource(ResourceType.Food, peasantFoodProduction.times(efficiency.efficiency));
+    }
+
+    // Iron ore production from workers
+    const workerIronOreProduction = state.calculateClassProduction ? state.calculateClassProduction(ResourceType.IronOre) : new Decimal(0);
+    if (workerIronOreProduction.greaterThan(0)) {
+      state.addResource(ResourceType.IronOre, workerIronOreProduction.times(efficiency.efficiency));
+    }
+
+    // Science production from scholars
+    const scholarScienceProduction = state.calculateClassProduction ? state.calculateClassProduction(ResourceType.Science) : new Decimal(0);
+    if (scholarScienceProduction.greaterThan(0)) {
+      state.addResource(ResourceType.Science, scholarScienceProduction.times(efficiency.efficiency));
+    }
+
+    // 4. Social class consumption
+    // Food consumption
+    const classFoodConsumption = state.calculateClassConsumption ? state.calculateClassConsumption(ResourceType.Food) : new Decimal(0);
+    if (classFoodConsumption.greaterThan(0)) {
+      state.removeResource(ResourceType.Food, classFoodConsumption);
+    }
+
+    // Gold consumption (scholars only)
+    const classGoldConsumption = state.calculateClassConsumption ? state.calculateClassConsumption(ResourceType.Gold) : new Decimal(0);
+    if (classGoldConsumption.greaterThan(0)) {
+      state.removeResource(ResourceType.Gold, classGoldConsumption);
+    }
+
+    // 5. Era 2 Building effects
+    // Smelter: Convert Iron Ore + Wood → Iron Ingot
+    const smelterCount = state.getBuildingCount ? state.getBuildingCount('smelter' as any) : new Decimal(0);
+    if (smelterCount.greaterThan(0)) {
+      const currentIronOre = state.getResource(ResourceType.IronOre);
+      const currentWood = state.getResource(ResourceType.Wood);
+
+      // Each smelter converts: 1 iron ore + 1 wood → 1 iron ingot per tick
+      const conversionRate = smelterCount.times(new Decimal(1)); // 1 unit per smelter per tick
+      const actualConversion = Decimal.min(currentIronOre, conversionRate);
+
+      if (actualConversion.greaterThan(0)) {
+        // Check if we have enough wood
+        const woodNeeded = actualConversion;
+        if (currentWood.greaterThanOrEqualTo(woodNeeded)) {
+          state.removeResource(ResourceType.IronOre, actualConversion);
+          state.removeResource(ResourceType.Wood, woodNeeded);
+          state.addResource(ResourceType.IronIngot, actualConversion);
+        }
+      }
+    }
+
+    // Library: Bonus science production
+    const libraryCount = state.getBuildingCount ? state.getBuildingCount('library' as any) : new Decimal(0);
+    if (libraryCount.greaterThan(0)) {
+      const libraryScienceBonus = libraryCount.times(new Decimal(0.1)); // +0.1 science per library per tick
+      state.addResource(ResourceType.Science, libraryScienceBonus.times(efficiency.efficiency));
+    }
+
+    // Farm: Food production
+    const farmCount = state.getBuildingCount ? state.getBuildingCount('farm' as any) : new Decimal(0);
+    if (farmCount.greaterThan(0)) {
+      const farmFoodProduction = farmCount.times(new Decimal(0.2)); // +0.2 food per farm per tick
+      state.addResource(ResourceType.Food, farmFoodProduction.times(efficiency.efficiency));
+    }
+
+    // Mine: Iron ore + stone production
+    const mineCount = state.getBuildingCount ? state.getBuildingCount('mine' as any) : new Decimal(0);
+    if (mineCount.greaterThan(0)) {
+      const mineIronOreProduction = mineCount.times(new Decimal(0.05)); // +0.5 iron ore per mine per second
+      const mineStoneProduction = mineCount.times(new Decimal(0.03)); // +0.3 stone per mine per second
+      state.addResource(ResourceType.IronOre, mineIronOreProduction.times(efficiency.efficiency));
+      state.addResource(ResourceType.Stone, mineStoneProduction.times(efficiency.efficiency));
+    }
+
+    // Theater: Happiness bonus (passive, handled in happinessSlice)
+  }
+  // ============================================
+
   // Storage caps are automatically enforced in addResource()
   // Overflow resources are simply lost (cruel mode!)
 };

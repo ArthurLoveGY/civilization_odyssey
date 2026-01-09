@@ -25,9 +25,15 @@ const WARMTH_CLOTHING_REDUCTION = new Decimal(0.3); // Additional reduction if c
 
 // Map JobType (singular) to job object key (plural)
 const JOB_KEY_MAP: Record<JobType, keyof JobAssignment> = {
+  // Era 1 Jobs
   [JobType.Gatherer]: 'gatherers',
   [JobType.Woodcutter]: 'woodcutters',
   [JobType.Stonecutter]: 'stonecutters',
+  // Era 2 Jobs
+  [JobType.Miner]: 'miners',
+  [JobType.Smith]: 'smiths',
+  [JobType.Scholar]: 'scholars',
+  [JobType.Guard]: 'guards',
 };
 
 // Create the tribe slice
@@ -39,9 +45,28 @@ export const createTribeSlice: StateCreator<
 > = (set, get) => ({
   // Initial state - all workers unassigned
   jobs: {
+    // Era 1 Jobs
     gatherers: new Decimal(0),
     woodcutters: new Decimal(0),
     stonecutters: new Decimal(0),
+    // Era 2 Jobs
+    miners: new Decimal(0),
+    smiths: new Decimal(0),
+    scholars: new Decimal(0),
+    guards: new Decimal(0),
+  },
+  
+  // Era 2: Job efficiency tracking (0-1 scale)
+  jobEfficiency: {
+    // Era 1 Jobs
+    gatherer: new Decimal(1.0),
+    woodcutter: new Decimal(1.0),
+    stonecutter: new Decimal(1.0),
+    // Era 2 Jobs
+    miner: new Decimal(1.0),
+    smith: new Decimal(1.0),
+    scholar: new Decimal(1.0),
+    guard: new Decimal(1.0),
   },
 
   // Calculate idle population (thinkers)
@@ -255,20 +280,39 @@ export const createTribeSlice: StateCreator<
       modifier: seasonModifier,
     };
   },
+
+  // Era 2: Get job efficiency for a specific job type
+  getJobEfficiency: (jobType: any) => {
+    const state = get() as any;
+    const jobEfficiency = state.jobEfficiency || {};
+    return jobEfficiency[jobType] || new Decimal(1.0);
+  },
+
+  // Era 2: Set job efficiency for a specific job type
+  setJobEfficiency: (jobType: any, efficiency: any) => {
+    set((state: any) => ({
+      jobEfficiency: {
+        ...(state.jobEfficiency || {}),
+        [jobType]: efficiency,
+      },
+    }));
+  },
 });
 
 // Type exports
 export interface TribeSliceState {
   jobs: JobAssignment;
+  // Era 2: Job efficiency tracking
+  jobEfficiency: Record<string, Decimal>;  // Maps job type to efficiency (0-1)
 }
 
 export interface TribeActions {
   getIdlePopulation: () => Decimal;
-  assignWorker: (jobType: JobType, amount: Decimal) => void;
-  removeWorker: (jobType: JobType, amount: Decimal) => void;
-  getWorkerCount: (jobType: JobType) => Decimal;
+  assignWorker: (jobType: any, amount: Decimal) => void;
+  removeWorker: (jobType: any, amount: Decimal) => void;
+  getWorkerCount: (jobType: any) => Decimal;
   calculateJobProduction: (resourceType: ResourceType) => Decimal;
-  isJobUnlocked: (jobType: JobType) => boolean;
+  isJobUnlocked: (jobType: any) => boolean;
   calculateFoodConsumption: () => Decimal;
   getWarmthStatus: () => {
     isCold: boolean;
@@ -276,4 +320,7 @@ export interface TribeActions {
     hasBonfire: boolean;
     modifier: Decimal;
   };
+  // Era 2: Job efficiency tracking
+  getJobEfficiency: (jobType: any) => Decimal;
+  setJobEfficiency: (jobType: any, efficiency: any) => void;
 }

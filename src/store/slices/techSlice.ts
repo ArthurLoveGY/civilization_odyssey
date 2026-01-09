@@ -1,12 +1,13 @@
 import { StateCreator } from 'zustand';
 import Decimal from 'decimal.js';
-import { TechType, TechDefinition, ResourceType, JobType } from '../../types/game';
+import { TechType, TechDefinition, ResourceType, JobType, TechTier } from '../../types/game';
 
-// Tech tree configuration
-const TECH_TREE: Record<TechType, TechDefinition> = {
+// Tech tree configuration (Era 1 only)
+const TECH_TREE: Partial<Record<TechType, TechDefinition>> = {
   [TechType.FlintKnapping]: {
     name: '打制石器',
     description: '学会打制石器，解锁碎石工岗位，手动采集石料+1',
+    tier: TechTier.Tribal,
     cost: {
       ideas: new Decimal(70),  // Reduced from 150 for faster first unlock
       resources: {
@@ -21,6 +22,7 @@ const TECH_TREE: Record<TechType, TechDefinition> = {
   [TechType.StoneAxes]: {
     name: '石斧',
     description: '制作石斧，伐木效率翻倍',
+    tier: TechTier.Tribal,
     cost: {
       ideas: new Decimal(200),
       resources: {
@@ -36,6 +38,7 @@ const TECH_TREE: Record<TechType, TechDefinition> = {
   [TechType.Spears]: {
     name: '长矛',
     description: '制作长矛，食物获取效率x1.5，毛皮掉落率翻倍',
+    tier: TechTier.Tribal,
     cost: {
       ideas: new Decimal(180),
       resources: {
@@ -74,6 +77,9 @@ export const createTechSlice: StateCreator<
     lastUsedTime: 0,
     cooldown: COUNCIL_GROUND_COOLDOWN,
   },
+  // Era 2
+  science: new Decimal(0),  // Scientific knowledge for Era 2 techs
+  culture: new Decimal(0),  // Culture points for policy unlocks
 
   // Get all available techs
   getAllTechs: () => {
@@ -101,9 +107,12 @@ export const createTechSlice: StateCreator<
     }
 
     const tech = TECH_TREE[techType];
+    if (!tech) {
+      return false;
+    }
 
     // Check if player has enough ideas
-    if (state.ideas.lessThan(tech.cost.ideas)) {
+    if (tech.cost.ideas && state.ideas.lessThan(tech.cost.ideas)) {
       return false;
     }
 
@@ -131,11 +140,17 @@ export const createTechSlice: StateCreator<
     }
 
     const tech = TECH_TREE[techType];
+    if (!tech) {
+      return;
+    }
 
     // Deduct ideas
-    set((prevState) => ({
-      ideas: prevState.ideas.minus(tech.cost.ideas),
-    }));
+    if (tech.cost.ideas) {
+      const ideasCost = tech.cost.ideas;
+      set((prevState) => ({
+        ideas: prevState.ideas.minus(ideasCost),
+      }));
+    }
 
     // Deduct resources
     if (tech.cost.resources) {
@@ -221,7 +236,7 @@ export const createTechSlice: StateCreator<
 
     for (const techType of state.researched) {
       const tech = TECH_TREE[techType];
-      if (!tech.effects) continue;
+      if (!tech?.effects) continue;
 
       if (resourceType === ResourceType.Food && tech.effects.manualFoodMultiplier) {
         multiplier = multiplier.times(tech.effects.manualFoodMultiplier);
@@ -244,12 +259,54 @@ export const createTechSlice: StateCreator<
 
     for (const techType of state.researched) {
       const tech = TECH_TREE[techType];
-      if (tech.effects?.skinDropRateMultiplier) {
+      if (tech?.effects?.skinDropRateMultiplier) {
         multiplier = multiplier.times(tech.effects.skinDropRateMultiplier);
       }
     }
 
     return multiplier;
+  },
+
+  // Era 2: Check if tech prerequisites are met
+  checkPrerequisites: (_techType: TechType) => {
+    // For now, all Era 2 techs have no prerequisites
+    // This will be expanded when tech tree is fully implemented
+    return true;
+  },
+
+  // Era 2: Research Era 2 tech (uses science instead of ideas)
+  researchTechEra2: (techType: TechType) => {
+    const state = get();
+
+    // For now, just call researchTech
+    // This will be expanded when Era 2 techs are fully implemented
+    state.researchTech(techType); // techType is used here
+  },
+
+  // Era 2: Add science (Era 2 knowledge resource)
+  addScience: (amount: Decimal) => {
+    set((state) => ({
+      science: state.science.plus(amount),
+    }));
+  },
+
+  // Era 2: Add culture (Era 2 policy resource)
+  addCulture: (amount: Decimal) => {
+    set((state) => ({
+      culture: state.culture.plus(amount),
+    }));
+  },
+
+  // Era 2: Check if can afford science
+  canAffordScience: (amount: Decimal) => {
+    const state = get();
+    return state.science.greaterThanOrEqualTo(amount);
+  },
+
+  // Era 2: Check if can afford culture
+  canAffordCulture: (amount: Decimal) => {
+    const state = get();
+    return state.culture.greaterThanOrEqualTo(amount);
   },
 });
 
@@ -262,11 +319,14 @@ export interface TechSliceState {
     lastUsedTime: number;
     cooldown: number;
   };
+  // Era 2
+  science: Decimal;  // Scientific knowledge for Era 2 techs
+  culture: Decimal;  // Culture points for policy unlocks
 }
 
 export interface TechActions {
-  getAllTechs: () => Record<TechType, TechDefinition>;
-  getTechDefinition: (techType: TechType) => TechDefinition;
+  getAllTechs: () => Partial<Record<TechType, TechDefinition>>;
+  getTechDefinition: (techType: TechType) => TechDefinition | undefined;
   isTechResearched: (techType: TechType) => boolean;
   canResearchTech: (techType: TechType) => boolean;
   researchTech: (techType: TechType) => void;
@@ -276,4 +336,11 @@ export interface TechActions {
   getCouncilGroundCooldownRemaining: () => string;
   getManualActionMultiplier: (resourceType: ResourceType) => Decimal;
   getSkinDropRateMultiplier: () => Decimal;
+  // Era 2
+  checkPrerequisites: (techType: TechType) => boolean;
+  researchTechEra2: (techType: TechType) => void;
+  addScience: (amount: Decimal) => void;
+  addCulture: (amount: Decimal) => void;
+  canAffordScience: (amount: Decimal) => boolean;
+  canAffordCulture: (amount: Decimal) => boolean;
 }

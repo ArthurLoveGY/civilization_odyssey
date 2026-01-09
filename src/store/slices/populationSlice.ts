@@ -15,6 +15,10 @@ export const createPopulationSlice: StateCreator<
   maxPopulation: new Decimal(5),  // Base max population
   growthProgress: new Decimal(0),  // Growth progress (0-100 ticks)
   starvationCounter: 0,
+  // Era 2: Derived attributes
+  housingCap: new Decimal(20),  // Base housing cap for Era 2
+  security: new Decimal(100),    // Base security (100%)
+  happiness: new Decimal(75),   // Base happiness (75%)
 
   // Consume food for population (stub - actual logic is in game/tick.ts)
   consumeFood: () => {
@@ -130,5 +134,82 @@ export const createPopulationSlice: StateCreator<
     set((state) => ({
       growthProgress: state.growthProgress.plus(delta),
     }));
+  },
+
+  // Era 2: Calculate housing cap from buildings
+  calculateHousingCap: () => {
+    const state = get() as any;
+    const buildings = state.buildings as any;
+    const baseCap = new Decimal(20);
+    
+    // Aqueduct: +15 housing per building
+    const aqueductCount = buildings.aqueduct?.count || new Decimal(0);
+    const aqueductBonus = aqueductCount.times(15);
+    
+    // CityWalls: +5 housing per building
+    const cityWallsCount = buildings.cityWalls?.count || new Decimal(0);
+    const cityWallsBonus = cityWallsCount.times(5);
+    
+    // Barracks: +10 housing per building
+    const barracksCount = buildings.barracks?.count || new Decimal(0);
+    const barracksBonus = barracksCount.times(10);
+    
+    // House: +10 housing per building
+    const houseCount = buildings.house?.count || new Decimal(0);
+    const houseBonus = houseCount.times(10);
+    
+    return baseCap.plus(aqueductBonus).plus(cityWallsBonus).plus(barracksBonus).plus(houseBonus);
+  },
+
+  // Era 2: Calculate security from buildings and guards
+  calculateSecurity: () => {
+    const state = get() as any;
+    const buildings = state.buildings as any;
+    const jobs = state.jobs || {};
+    
+    // Base security: 100%
+    const baseSecurity = new Decimal(100);
+    
+    // Decay: -0.5 security per total population
+    const totalPopulation = state.settlers || new Decimal(0);
+    const decay = totalPopulation.times(new Decimal(0.5));
+    
+    // Defense from guards: +2 security per guard
+    const guardCount = jobs.guards || new Decimal(0);
+    const guardDefense = guardCount.times(2);
+    
+    // Defense from CityWalls: +5 security per wall
+    const cityWallsCount = buildings.cityWalls?.count || new Decimal(0);
+    const wallDefense = cityWallsCount.times(5);
+    
+    const totalDefense = guardDefense.plus(wallDefense);
+    const finalSecurity = baseSecurity.minus(decay).plus(totalDefense);
+    
+    // Clamp to 0-100 range
+    return Decimal.max(0, Decimal.min(100, finalSecurity));
+  },
+
+  // Era 2: Update happiness (simplified for now, full calculation in happinessSlice)
+  updateHappiness: () => {
+    const state = get() as any;
+    const currentHappiness = state.happiness || new Decimal(75);
+    
+    // Simple happiness calculation based on food and security
+    const food = state.resources?.[ResourceType.Food] || new Decimal(0);
+    const security = state.security || new Decimal(100);
+    
+    // Food bonus: +10 happiness if food > 50
+    const foodBonus = food.greaterThan(50) ? new Decimal(10) : new Decimal(0);
+    
+    // Security penalty: -0.5 happiness for each security point below 80
+    const securityPenalty = security.lessThan(80) ? 
+      new Decimal(80).minus(security).times(0.5) : new Decimal(0);
+    
+    const targetHappiness = currentHappiness.plus(foodBonus).minus(securityPenalty);
+    
+    // Clamp to 0-100 range
+    const newHappiness = Decimal.max(0, Decimal.min(100, targetHappiness));
+    
+    set({ happiness: newHappiness });
   },
 });

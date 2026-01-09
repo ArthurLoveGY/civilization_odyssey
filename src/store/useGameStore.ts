@@ -17,7 +17,11 @@ import { createScoutingSlice } from './slices/scoutingSlice';
 import { createTribeSlice } from './slices/tribeSlice';
 import { createTechSlice } from './slices/techSlice';
 import { createEventSlice } from './slices/eventSlice';
-import { deepMergeAndRehydrate } from '../utils/persistence';
+// Era 2 Slices
+import { createSocialClassSlice } from './slices/socialClassSlice';
+import { createTaxSlice } from './slices/taxSlice';
+import { createHappinessSlice } from './slices/happinessSlice';
+import { deepMergeAndRehydrate, exportSave, importSave, getSaveMetadata, type SaveMetadata } from '../utils/persistence';
 
 // Game control slice
 const createGameSlice = (): GameSliceState & GameActions => ({
@@ -30,6 +34,7 @@ const createGameSlice = (): GameSliceState & GameActions => ({
   pauseGame: () => {},
   toggleGame: () => {},
   setGameSpeed: () => {},
+  advanceToEra2: () => {},
 });
 
 // Create store with persist middleware
@@ -48,6 +53,10 @@ export const useGameStore = create<GameStore>()(
       ...createTribeSlice(set, get, api),
       ...createTechSlice(set, get, api),
       ...createEventSlice(set, get, api),
+      // Era 2 Slices
+      ...createSocialClassSlice(set, get, api),
+      ...createTaxSlice(set, get, api),
+      ...createHappinessSlice(set, get, api),
     }),
     {
       name: 'civ-odyssey-save',
@@ -128,7 +137,113 @@ export const gameActions = {
   setActiveSpecialAction: (action: any) => useGameStore.getState().setActiveSpecialAction(action),
   completeSpecialAction: () => useGameStore.getState().completeSpecialAction(),
   clearSpecialAction: () => useGameStore.getState().clearSpecialAction(),
+
+  // Era 2 Actions
+  // Social Class actions
+  assignSocialClass: (classType: any, amount: any) => useGameStore.getState().assignSocialClass(classType, amount),
+  removeSocialClass: (classType: any, amount: any) => useGameStore.getState().removeSocialClass(classType, amount),
+  getClassCount: (classType: any) => useGameStore.getState().getClassCount(classType),
+  calculateClassProduction: (resourceType: any) => useGameStore.getState().calculateClassProduction(resourceType),
+  calculateClassConsumption: (resourceType: any) => useGameStore.getState().calculateClassConsumption(resourceType),
+  calculateTotalTaxBase: () => useGameStore.getState().calculateTotalTaxBase(),
+  initializeEra2Population: (settlers: any) => useGameStore.getState().initializeEra2Population(settlers),
+
+  // Tax actions
+  setTaxRate: (rate: any) => useGameStore.getState().setTaxRate(rate),
+  collectTax: () => useGameStore.getState().collectTax(),
+  calculateGoldIncome: () => useGameStore.getState().calculateGoldIncome(),
+  getTaxRate: () => useGameStore.getState().getTaxRate(),
+  canAdjustTax: (newRate: any) => useGameStore.getState().canAdjustTax(newRate),
+  initializeTaxSystem: () => useGameStore.getState().initializeTaxSystem(),
+
+  // Happiness actions
+  calculateTargetHappiness: () => useGameStore.getState().calculateTargetHappiness(),
+  updateHappiness: () => useGameStore.getState().updateHappiness(),
+  getProductionEfficiency: () => useGameStore.getState().getProductionEfficiency(),
+  getHappinessStatus: () => useGameStore.getState().getHappinessStatus(),
+  initializeHappinessSystem: () => useGameStore.getState().initializeHappinessSystem(),
+
+  // Population derived attributes actions
+  calculateHousingCap: () => useGameStore.getState().calculateHousingCap(),
+  calculateSecurity: () => useGameStore.getState().calculateSecurity(),
+
+  // Job efficiency tracking
+  getJobEfficiency: (jobType: any) => {
+    const state = useGameStore.getState();
+    const jobEfficiency = state.jobEfficiency || {};
+    return jobEfficiency[jobType] || new Decimal(1.0);
+  },
+  setJobEfficiency: (jobType: any, efficiency: any) => {
+    useGameStore.setState((state) => ({
+      jobEfficiency: {
+        ...state.jobEfficiency,
+        [jobType]: efficiency,
+      },
+    }));
+  },
+
+  // Era 2 Tech actions
+  checkPrerequisites: (techType: any) => useGameStore.getState().checkPrerequisites(techType),
+  researchTechEra2: (techType: any) => useGameStore.getState().researchTechEra2(techType),
+  addScience: (amount: any) => useGameStore.getState().addScience(amount),
+  addCulture: (amount: any) => useGameStore.getState().addCulture(amount),
+  canAffordScience: (amount: any) => useGameStore.getState().canAffordScience(amount),
+  canAffordCulture: (amount: any) => useGameStore.getState().canAffordCulture(amount),
+
+  // Era transition action
+  advanceToEra2: () => {
+    const state = useGameStore.getState();
+
+    // 1. Set current era to Kingdom
+    useGameStore.setState({ currentEra: Era.Kingdom });
+
+    // 2. Initialize Era 2 systems
+    state.initializeEra2Population(state.settlers);
+    state.initializeTaxSystem();
+    state.initializeHappinessSystem();
+
+    // 3. Add log message
+    state.addLog('时代更迭：部落时代结束，王国时代开始！人民开始新的生活...', 'success');
+
+    // 4. Resume game
+    useGameStore.setState({ isPaused: false });
+  },
+
   // Persistence actions
+  /**
+   * 导出存档为 Base64 字符串
+   * @returns Base64 编码的存档
+   */
+  exportSave: (): string => {
+    try {
+      return exportSave();
+    } catch (error) {
+      console.error('Export save failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 导入 Base64 存档
+   * @param base64String Base64 编码的存档字符串
+   */
+  importSave: (base64String: string): void => {
+    try {
+      importSave(base64String);
+    } catch (error) {
+      console.error('Import save failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 获取存档元数据
+   * @returns 存档元数据
+   */
+  getSaveMetadata: (): SaveMetadata | null => {
+    return getSaveMetadata();
+  },
+
   resetSave: () => {
     localStorage.removeItem('civ-odyssey-save');
     window.location.reload();

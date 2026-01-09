@@ -1,11 +1,28 @@
 import { memo, useState, useEffect } from 'react';
-import { Home, Warehouse, Trees, Shield, Mountain, Crosshair, Drumstick, Scroll, Skull } from 'lucide-react';
+import {
+  Home,
+  Warehouse,
+  Trees,
+  Shield,
+  Mountain,
+  Crosshair,
+  Drumstick,
+  Scroll,
+  Skull,
+  Building,
+  Store,
+  Hammer,
+  Factory,
+  BookOpen,
+  Crown,
+} from 'lucide-react';
 import { gameActions, useGameStore } from '../store/useGameStore';
 import { BuildingType, ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
 import Decimal from 'decimal.js';
 
 const BUILDING_CONFIG = {
+  // Era 1 Buildings
   [BuildingType.Tent]: {
     name: '帐篷',
     icon: Home,
@@ -66,6 +83,79 @@ const BUILDING_CONFIG = {
     description: '统一各个氏族，我们将不再流浪。这是文明的基石。',
     category: 'wonder' as const,
   },
+  // Era 2 Buildings
+  [BuildingType.TaxOffice]: {
+    name: '税务局',
+    icon: Building,
+    description: '启用税收收集系统',
+    category: 'city' as const,
+  },
+  [BuildingType.Aqueduct]: {
+    name: '水渠',
+    icon: Scroll,
+    description: '人口上限 +15',
+    category: 'city' as const,
+  },
+  [BuildingType.Library]: {
+    name: '图书馆',
+    icon: BookOpen,
+    description: '科学产出 +0.1/秒',
+    category: 'culture' as const,
+  },
+  [BuildingType.CityWalls]: {
+    name: '城墙',
+    icon: Shield,
+    description: '治安 +5，人口上限 +5',
+    category: 'wonder' as const,
+  },
+  [BuildingType.House]: {
+    name: '民宅',
+    icon: Building,
+    description: '增加 10 人口上限',
+    category: 'population' as const,
+  },
+  [BuildingType.Market]: {
+    name: '市场',
+    icon: Store,
+    description: '黄金产出加成 +5%',
+    category: 'city' as const,
+  },
+  [BuildingType.DeepMine]: {
+    name: '深矿',
+    icon: Mountain,
+    description: '产出铁矿石（+0.5/秒）',
+    category: 'industrial' as const,
+  },
+  [BuildingType.Smelter]: {
+    name: '冶炼厂',
+    icon: Factory,
+    description: '自动将铁矿石 + 木材 → 铁锭',
+    category: 'industrial' as const,
+  },
+  [BuildingType.Blacksmith]: {
+    name: '铁匠铺',
+    icon: Hammer,
+    description: '处理铁矿石，生产工具',
+    category: 'industrial' as const,
+  },
+  [BuildingType.Bank]: {
+    name: '银行',
+    icon: Building,
+    description: '提高黄金存储上限和税收效率',
+    category: 'city' as const,
+  },
+  [BuildingType.Barracks]: {
+    name: '兵营',
+    icon: Shield,
+    description: '卫兵容量 +10，治安 +防御',
+    category: 'wonder' as const,
+  },
+  [BuildingType.Palace]: {
+    name: '皇宫',
+    icon: Crown,
+    description: '王权的象征，解锁完整政府系统',
+    category: 'wonder' as const,
+  },
 };
 
 const CATEGORY_NAMES = {
@@ -74,6 +164,9 @@ const CATEGORY_NAMES = {
   survival: '生存设施',
   culture: '文化建筑',
   wonder: '奇迹建筑',
+  // Era 2 Categories
+  city: '城市建筑',
+  industrial: '工业建筑',
 };
 
 const CATEGORY_COLORS = {
@@ -82,20 +175,21 @@ const CATEGORY_COLORS = {
   survival: 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-300 dark:border-emerald-700',
   culture: 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-300 dark:border-yellow-700',
   wonder: 'text-amber-500',
+  // Era 2 Categories
+  city: 'bg-purple-50 dark:bg-purple-900/10 border-purple-300 dark:border-purple-700',
+  industrial: 'bg-orange-50 dark:bg-orange-900/10 border-orange-300 dark:border-orange-700',
 };
 
 export const BuildingsPanel = memo(() => {
-  const [buildingCounts, setBuildingCounts] = useState<Record<BuildingType, Decimal>>({
-    [BuildingType.Tent]: new Decimal(0),
-    [BuildingType.Granary]: new Decimal(0),
-    [BuildingType.Woodshed]: new Decimal(0),
-    [BuildingType.SkinRack]: new Decimal(0),
-    [BuildingType.StoneShed]: new Decimal(0),
-    [BuildingType.SnareTrap]: new Decimal(0),
-    [BuildingType.DryingRack]: new Decimal(0),
-    [BuildingType.TotemPole]: new Decimal(0),
-    [BuildingType.Graveyard]: new Decimal(0),
-    [BuildingType.TribalHall]: new Decimal(0),
+  const currentEra = useGameStore((state) => state.currentEra);
+
+  // Initialize building counts dynamically for all building types
+  const [buildingCounts, setBuildingCounts] = useState<Record<BuildingType, Decimal>>(() => {
+    const counts: Record<string, Decimal> = {};
+    Object.keys(BuildingType).forEach(key => {
+      counts[key] = new Decimal(0);
+    });
+    return counts as Record<BuildingType, Decimal>;
   });
 
   const [costs, setCosts] = useState<Record<BuildingType, string>>({} as Record<BuildingType, string>);
@@ -142,6 +236,12 @@ export const BuildingsPanel = memo(() => {
           if (cost[ResourceType.Ideas]?.greaterThan(0)) {
             costParts.push(`${cost[ResourceType.Ideas].toFixed(1)} 理念`);
           }
+          if (cost[ResourceType.Gold]?.greaterThan(0)) {
+            costParts.push(`${cost[ResourceType.Gold].toFixed(1)} 黄金`);
+          }
+          if (cost[ResourceType.IronIngot]?.greaterThan(0)) {
+            costParts.push(`${cost[ResourceType.IronIngot].toFixed(1)} 铁锭`);
+          }
 
           costs[buildingType] = costParts.join(' + ') || '免费';
 
@@ -160,6 +260,14 @@ export const BuildingsPanel = memo(() => {
             canAffordBuilding = false;
           }
           if (cost[ResourceType.Ideas]?.greaterThan(0) && ideas.lessThan(cost[ResourceType.Ideas])) {
+            canAffordBuilding = false;
+          }
+          const gold = gameActions.getResource ? gameActions.getResource(ResourceType.Gold) : new Decimal(0);
+          if (cost[ResourceType.Gold]?.greaterThan(0) && gold.lessThan(cost[ResourceType.Gold])) {
+            canAffordBuilding = false;
+          }
+          const ironIngot = gameActions.getResource ? gameActions.getResource(ResourceType.IronIngot) : new Decimal(0);
+          if (cost[ResourceType.IronIngot]?.greaterThan(0) && ironIngot.lessThan(cost[ResourceType.IronIngot])) {
             canAffordBuilding = false;
           }
 
@@ -189,6 +297,7 @@ export const BuildingsPanel = memo(() => {
 
     if (gameActions.addLog) {
       const messages: Record<BuildingType, string[]> = {
+        // Era 1 Buildings
         [BuildingType.Tent]: ['一座新的帐篷搭建完成，部落有了更多空间。', '帐篷落成，我们的部落扩大了。'],
         [BuildingType.Granary]: ['粮仓建造完成，可以储存更多食物。', '族人们修建了粮仓，食物储备更安全了。'],
         [BuildingType.Woodshed]: ['木材库搭建完成，木材储存上限提升。', '新的木材库建成了。'],
@@ -199,6 +308,20 @@ export const BuildingsPanel = memo(() => {
         [BuildingType.TotemPole]: ['图腾柱竖立完成，先祖的故事将永远流传。', '族人们制作了新的图腾柱，部落精神更加凝聚。'],
         [BuildingType.Graveyard]: ['墓地修建完成，逝者将得到安息。', '新的墓地建成了，我们对逝者表示敬意。'],
         [BuildingType.TribalHall]: ['部落大厅建成了！各个氏族终于在共同屋檐下团结。', '这是部落历史上最重要的时刻，标志着文明曙光的到来。'],
+        // Era 2 Buildings
+        // Era 2 Buildings messages
+        [BuildingType.TaxOffice]: ['税务局建成，税收系统开始运作。', '新的税务局建成了，国库将充盈。'],
+        [BuildingType.Aqueduct]: ['水渠通水，城市用水充足，人口增长加速。', '新的水渠建成了，居民生活条件改善。'],
+        [BuildingType.Library]: ['图书馆建成，知识的殿堂已经开放。', '学者们聚集在图书馆，文明的火种开始燎原。'],
+        [BuildingType.CityWalls]: ['城墙建成，城市安全性大幅提升。', '新的城墙建成了，王国防御力增强。'],
+        [BuildingType.DeepMine]: ['深矿挖掘完成，铁矿资源源源不断。', '新的深矿建成了，工业原料有了保障。'],
+        [BuildingType.Smelter]: ['冶炼厂建成，铁矿石将转化为铁锭。', '新的冶炼厂建成了，工业化进程加速。'],
+        [BuildingType.Blacksmith]: ['铁匠铺建成，铁匠们开始打造工具。', '新的铁匠铺建成了，生产效率大幅提升。'],
+        [BuildingType.Market]: ['市场开市，贸易繁荣，黄金流通加速。', '新的市场建成了，商业活动更加活跃。'],
+        [BuildingType.Bank]: ['银行开业，金融体系建立。', '新的银行建成了，财富管理更加高效。'],
+        [BuildingType.Barracks]: ['兵营建成，士兵们有了驻扎之所。', '新的兵营建成了，城市防御力量加强。'],
+        [BuildingType.House]: ['民宅建造完成，更多人口可以居住。', '新的民宅建成了，城市更加繁荣。'],
+        [BuildingType.Palace]: ['皇宫巍峨耸立，王权的象征！', '皇宫落成，这是王国历史上最辉煌的时刻！'],
       };
       const buildingMessages = messages[type] || ['建筑完成。'];
       gameActions.addLog(buildingMessages[Math.floor(Math.random() * buildingMessages.length)], 'success');
@@ -211,7 +334,19 @@ export const BuildingsPanel = memo(() => {
     if (!buildingsByCategory[config.category]) {
       buildingsByCategory[config.category] = [];
     }
-    buildingsByCategory[config.category].push(type as BuildingType);
+
+    // Filter buildings based on current era
+    if (currentEra === 'tribal') {
+      // Era 1: Show only Era 1 buildings (population, storage, survival, culture, wonder)
+      if (['population', 'storage', 'survival', 'culture', 'wonder'].includes(config.category)) {
+        buildingsByCategory[config.category].push(type as BuildingType);
+      }
+    } else {
+      // Era 2: Show only Era 2 buildings (population, city, industrial, culture, wonder)
+      if (['population', 'city', 'industrial', 'culture', 'wonder'].includes(config.category)) {
+        buildingsByCategory[config.category].push(type as BuildingType);
+      }
+    }
   });
 
   return (

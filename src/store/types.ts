@@ -1,5 +1,24 @@
 import Decimal from 'decimal.js';
-import { ResourceType, Season, LogEntry, Era, BonfireState, BonfireStatus, BuildingType, StorageCap, ScoutingEvent, JobAssignment, TechType, TechDefinition, CouncilGroundState } from '../types/game';
+import {
+  ResourceType,
+  Season,
+  LogEntry,
+  Era,
+  BonfireState,
+  BonfireStatus,
+  BuildingType,
+  StorageCap,
+  ScoutingEvent,
+  JobAssignment,
+  TechType,
+  TechDefinition,
+  CouncilGroundState,
+  SocialClass,
+  SocialClassAssignment,
+  HappinessStatus,
+  HappinessFactors,
+  ProductionEfficiency,
+} from '../types/game';
 
 // ========================================
 // SLICE STATE INTERFACES (Flattened)
@@ -23,6 +42,10 @@ export interface PopulationSliceState {
   maxPopulation: Decimal;
   growthProgress: Decimal;
   starvationCounter: number;
+  // Era 2: Derived attributes
+  housingCap: Decimal;      // Hard cap from buildings (20 + Aqueduct*15 + CityWalls*5)
+  security: Decimal;          // 0-100%, affects gold retention rate
+  happiness: Decimal;        // 0-100%, affects production efficiency
 }
 
 export interface LogSliceState {
@@ -54,6 +77,8 @@ export interface ScoutingSliceState {
 
 export interface TribeSliceState {
   jobs: JobAssignment;
+  // Era 2: Job efficiency tracking
+  jobEfficiency: Record<string, Decimal>;  // Maps job type to efficiency (0-1)
 }
 
 export interface TechSliceState {
@@ -61,6 +86,19 @@ export interface TechSliceState {
   ideas: Decimal;
   tradition: Decimal;
   councilGround: CouncilGroundState;
+  // Era 2
+  science: Decimal;  // Scientific knowledge for Era 2 techs
+  culture: Decimal;  // Culture points for policy unlocks
+}
+
+export interface TechSliceState {
+  researched: TechType[];
+  ideas: Decimal;
+  tradition: Decimal;
+  councilGround: CouncilGroundState;
+  // Era 2
+  science: Decimal;  // Scientific knowledge for Era 2 techs
+  culture: Decimal;  // Culture points for policy unlocks
 }
 
 export interface EventSliceState {
@@ -71,6 +109,30 @@ export interface EventSliceState {
     action: any;
     startTime: number;
   } | null;
+}
+
+// Era 2 States
+export interface SocialClassSliceState {
+  socialClasses: SocialClassAssignment;
+  totalPopulation: Decimal;
+  idlePopulation: Decimal;
+}
+
+export interface TaxSliceState {
+  currentRate: Decimal;
+  minRate: Decimal;
+  maxRate: Decimal;
+  lastCollection: number;
+  goldIncome: Decimal;
+  totalGoldCollected: Decimal;
+}
+
+export interface HappinessSliceState {
+  currentHappiness: Decimal;
+  targetHappiness: Decimal;
+  factors: HappinessFactors;
+  status: HappinessStatus;
+  efficiency: ProductionEfficiency;
 }
 
 // Combined store state
@@ -86,6 +148,11 @@ export interface GameStore
     TribeSliceState,
     TechSliceState,
     EventSliceState,
+    // Era 2 States
+    SocialClassSliceState,
+    TaxSliceState,
+    HappinessSliceState,
+    // Actions
     ResourceActions,
     SeasonActions,
     PopulationActions,
@@ -96,7 +163,11 @@ export interface GameStore
     ScoutingActions,
     TribeActions,
     TechActions,
-    EventActions {}
+    EventActions,
+    // Era 2 Actions
+    SocialClassActions,
+    TaxActions,
+    HappinessActions {}
 
 // ========================================
 // SLICE ACTIONS
@@ -129,6 +200,10 @@ export interface PopulationActions {
   getMaxPopulation: () => Decimal;
   canGrowPopulation: () => boolean;
   updateGrowthProgress: (delta: Decimal) => void;
+  // Era 2 Actions
+  calculateHousingCap: () => Decimal;
+  calculateSecurity: () => Decimal;
+  updateHappiness: () => void;
 }
 
 export interface LogActions {
@@ -141,6 +216,7 @@ export interface GameActions {
   pauseGame: () => void;
   toggleGame: () => void;
   setGameSpeed: (speed: number) => void;
+  advanceToEra2: () => void;
 }
 
 export interface BonfireActions {
@@ -180,11 +256,14 @@ export interface TribeActions {
     hasBonfire: boolean;
     modifier: Decimal;
   };
+  // Era 2: Job efficiency tracking
+  getJobEfficiency: (jobType: any) => Decimal;
+  setJobEfficiency: (jobType: any, efficiency: any) => void;
 }
 
 export interface TechActions {
-  getAllTechs: () => Record<TechType, TechDefinition>;
-  getTechDefinition: (techType: TechType) => TechDefinition;
+  getAllTechs: () => Partial<Record<TechType, TechDefinition>>;
+  getTechDefinition: (techType: TechType) => TechDefinition | undefined;
   isTechResearched: (techType: TechType) => boolean;
   canResearchTech: (techType: TechType) => boolean;
   researchTech: (techType: TechType) => void;
@@ -194,6 +273,13 @@ export interface TechActions {
   getCouncilGroundCooldownRemaining: () => string;
   getManualActionMultiplier: (resourceType: ResourceType) => Decimal;
   getSkinDropRateMultiplier: () => Decimal;
+  // Era 2
+  checkPrerequisites: (techType: TechType) => boolean;
+  researchTechEra2: (techType: TechType) => void;
+  addScience: (amount: Decimal) => void;
+  addCulture: (amount: Decimal) => void;
+  canAffordScience: (amount: Decimal) => boolean;
+  canAffordCulture: (amount: Decimal) => boolean;
 }
 
 export interface EventActions {
@@ -204,4 +290,33 @@ export interface EventActions {
   setActiveSpecialAction: (action: any) => void;
   completeSpecialAction: () => void;
   clearSpecialAction: () => void;
+}
+
+// Era 2 Actions
+export interface SocialClassActions {
+  assignSocialClass: (classType: SocialClass, amount: Decimal) => void;
+  removeSocialClass: (classType: SocialClass, amount: Decimal) => void;
+  getClassCount: (classType: SocialClass) => Decimal;
+  getIdlePopulation: () => Decimal;
+  calculateClassProduction: (resourceType: ResourceType) => Decimal;
+  calculateClassConsumption: (resourceType: ResourceType) => Decimal;
+  calculateTotalTaxBase: () => Decimal;
+  initializeEra2Population: (settlers: Decimal) => void;
+}
+
+export interface TaxActions {
+  setTaxRate: (rate: Decimal) => void;
+  collectTax: () => void;
+  calculateGoldIncome: () => Decimal;
+  getTaxRate: () => Decimal;
+  canAdjustTax: (newRate: Decimal) => boolean;
+  initializeTaxSystem: () => void;
+}
+
+export interface HappinessActions {
+  calculateTargetHappiness: () => Decimal;
+  updateHappiness: () => void;
+  getProductionEfficiency: () => ProductionEfficiency;
+  getHappinessStatus: () => HappinessStatus;
+  initializeHappinessSystem: () => void;
 }

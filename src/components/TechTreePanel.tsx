@@ -1,5 +1,6 @@
 import { memo, useState, useEffect } from 'react';
 import { BookOpen, Check } from 'lucide-react';
+import Decimal from 'decimal.js';
 import { gameActions } from '../store/useGameStore';
 import { TechType, ResourceType } from '../types/game';
 import { cn } from '../utils/cn';
@@ -17,6 +18,10 @@ const TechCard = memo(({
 }) => {
   const tech = gameActions.getTechDefinition(techType);
 
+  if (!tech) {
+    return null;
+  }
+
   // Build resource cost display
   const resourceCosts = tech.cost.resources || {};
   const resourceCostItems = Object.entries(resourceCosts).map(([type, amount]) => {
@@ -29,7 +34,8 @@ const TechCard = memo(({
     };
   });
 
-  const canAffordIdeas = gameActions.getResource(ResourceType.Ideas).greaterThanOrEqualTo(tech.cost.ideas);
+  const ideasCost = tech.cost.ideas || new Decimal(0);
+  const canAffordIdeas = gameActions.getResource(ResourceType.Ideas).greaterThanOrEqualTo(ideasCost);
 
   return (
     <div className={cn(
@@ -71,7 +77,7 @@ const TechCard = memo(({
           canAffordIdeas ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400'
         )}>
           <span>💡 理念</span>
-          <span className="font-bold">{tech.cost.ideas.toFixed(0)}</span>
+          <span className="font-bold">{ideasCost.toFixed(0)}</span>
         </div>
         {resourceCostItems.map(({ type, amount, canAfford }) => (
           <div key={type} className={cn(
@@ -194,17 +200,22 @@ export const TechTreePanel = memo(() => {
             已掌握的科技
           </h3>
           <div className="grid grid-cols-1 gap-2">
-            {researchedTechs.map((techType) => (
-              <div
-                key={techType}
-                className="p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800 flex items-center gap-2"
-              >
-                <Check className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                <span className="text-sm font-bold text-green-900 dark:text-green-100">
-                  {allTechs[techType].name}
-                </span>
-              </div>
-            ))}
+            {researchedTechs.map((techType) => {
+              const tech = allTechs[techType];
+              if (!tech) return null;
+
+              return (
+                <div
+                  key={techType}
+                  className="p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800 flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span className="text-sm font-bold text-green-900 dark:text-green-100">
+                    {tech.name}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

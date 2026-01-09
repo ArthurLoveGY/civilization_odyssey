@@ -8,8 +8,9 @@ const BUILDING_CONFIG: Record<BuildingType, {
   costMultiplier: Decimal;
   populationBonus?: Decimal;
   storageBonus?: Partial<Record<ResourceType, Decimal>>;
-  category?: 'population' | 'storage' | 'survival' | 'culture' | 'wonder';
+  category?: 'population' | 'storage' | 'survival' | 'culture' | 'wonder' | 'city' | 'industrial';
 }> = {
+  // Era 1 Buildings
   [BuildingType.Tent]: {
     baseCost: {
       [ResourceType.Wood]: new Decimal(10),
@@ -109,10 +110,122 @@ const BUILDING_CONFIG: Record<BuildingType, {
     costMultiplier: new Decimal(1.0), // No exponential scaling for wonder
     category: 'wonder',
   },
+  
+  // Era 2 Buildings (Kingdom)
+  // Tier 1: Order (Prerequisites: None)
+  [BuildingType.TaxOffice]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(500),
+      [ResourceType.Ideas]: new Decimal(0),
+    },
+    costMultiplier: new Decimal(1.5), // Exponential growth
+    category: 'city',
+  },
+  [BuildingType.Aqueduct]: {
+    baseCost: {
+      [ResourceType.Stone]: new Decimal(100),
+      [ResourceType.IronIngot]: new Decimal(50),
+    },
+    costMultiplier: new Decimal(1.25), // Lower multiplier for infrastructure
+    category: 'city',
+    populationBonus: new Decimal(15), // +15 housing cap per aqueduct
+  },
+  [BuildingType.Library]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(200),
+      [ResourceType.Gold]: new Decimal(50),
+    },
+    costMultiplier: new Decimal(1.3),
+    category: 'culture',
+  },
+  [BuildingType.CityWalls]: {
+    baseCost: {
+      [ResourceType.Stone]: new Decimal(200),
+      [ResourceType.IronIngot]: new Decimal(100),
+    },
+    costMultiplier: new Decimal(1.4),
+    category: 'wonder',
+    populationBonus: new Decimal(5), // +5 housing cap per wall segment
+  },
+  // Tier 2: Industry (Prerequisites: Masonry)
+  [BuildingType.DeepMine]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(100),
+      [ResourceType.IronIngot]: new Decimal(20),
+    },
+    costMultiplier: new Decimal(1.15), // Lower multiplier for production buildings
+    category: 'industrial',
+  },
+  [BuildingType.Smelter]: {
+    baseCost: {
+      [ResourceType.Stone]: new Decimal(200),
+      [ResourceType.Wood]: new Decimal(100),
+    },
+    costMultiplier: new Decimal(1.15),
+    category: 'industrial',
+  },
+  [BuildingType.Blacksmith]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(150),
+      [ResourceType.IronOre]: new Decimal(50),
+    },
+    costMultiplier: new Decimal(1.2),
+    category: 'industrial',
+  },
+  // Tier 3: Economy (Prerequisites: Civil Service + Metallurgy)
+  [BuildingType.Market]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(300),
+      [ResourceType.Gold]: new Decimal(200),
+      [ResourceType.IronIngot]: new Decimal(50),
+    },
+    costMultiplier: new Decimal(1.8),
+    category: 'city',
+  },
+  [BuildingType.Bank]: {
+    baseCost: {
+      [ResourceType.Stone]: new Decimal(400),
+      [ResourceType.Gold]: new Decimal(300),
+      [ResourceType.IronIngot]: new Decimal(100),
+    },
+    costMultiplier: new Decimal(2.0),
+    category: 'city',
+  },
+  [BuildingType.Barracks]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(250),
+      [ResourceType.Stone]: new Decimal(150),
+      [ResourceType.IronIngot]: new Decimal(50),
+    },
+    costMultiplier: new Decimal(1.5),
+    category: 'wonder',
+    populationBonus: new Decimal(10), // +10 housing cap for guards
+  },
+  // Housing
+  [BuildingType.House]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(50),
+      [ResourceType.Stone]: new Decimal(30),
+    },
+    costMultiplier: new Decimal(1.4),
+    populationBonus: new Decimal(10), // +10 max pop (better than tent's +5)
+    category: 'population',
+  },
+  [BuildingType.Palace]: {
+    baseCost: {
+      [ResourceType.Wood]: new Decimal(5000),
+      [ResourceType.Stone]: new Decimal(3000),
+      [ResourceType.Gold]: new Decimal(2000),
+      [ResourceType.IronIngot]: new Decimal(500),
+    },
+    costMultiplier: new Decimal(1.0), // No exponential scaling for wonder
+    category: 'wonder',
+  },
 };
 
 // Base storage caps (without buildings)
 const BASE_STORAGE_CAPS: StorageCap = {
+  // Era 1 Resources
   food: new Decimal(100),
   wood: new Decimal(100),
   skin: new Decimal(50),
@@ -120,6 +233,13 @@ const BASE_STORAGE_CAPS: StorageCap = {
   meat: new Decimal(30),
   curedMeat: new Decimal(100),
   tradition: new Decimal(1000),  // Tradition cap
+
+  // Era 2 Resources
+  gold: new Decimal(1000),       // Gold storage cap
+  ironOre: new Decimal(500),     // Iron ore cap
+  ironIngot: new Decimal(200),   // Iron ingot cap
+  science: new Decimal(1000),    // Science cap
+  manpower: new Decimal(100),    // Manpower cap
 };
 
 // Base max population (without tents)
@@ -150,6 +270,7 @@ export const createBuildingsSlice: StateCreator<
 > = (set, get) => ({
   // Initial state
   buildings: {
+    // Era 1 Buildings
     tent: {
       count: new Decimal(0),
       baseCost: BUILDING_CONFIG[BuildingType.Tent].baseCost,
@@ -200,9 +321,76 @@ export const createBuildingsSlice: StateCreator<
       baseCost: BUILDING_CONFIG[BuildingType.TribalHall].baseCost,
       costMultiplier: BUILDING_CONFIG[BuildingType.TribalHall].costMultiplier,
     },
+    
+    // Era 2 Buildings (Kingdom)
+    // Tier 1: Order
+    taxOffice: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.TaxOffice].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.TaxOffice].costMultiplier,
+    },
+    aqueduct: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Aqueduct].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Aqueduct].costMultiplier,
+    },
+    library: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Library].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Library].costMultiplier,
+    },
+    cityWalls: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.CityWalls].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.CityWalls].costMultiplier,
+    },
+    // Tier 2: Industry
+    deepMine: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.DeepMine].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.DeepMine].costMultiplier,
+    },
+    smelter: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Smelter].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Smelter].costMultiplier,
+    },
+    blacksmith: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Blacksmith].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Blacksmith].costMultiplier,
+    },
+    // Tier 3: Economy
+    market: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Market].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Market].costMultiplier,
+    },
+    bank: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Bank].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Bank].costMultiplier,
+    },
+    barracks: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Barracks].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Barracks].costMultiplier,
+    },
+    // Housing
+    house: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.House].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.House].costMultiplier,
+    },
+    palace: {
+      count: new Decimal(0),
+      baseCost: BUILDING_CONFIG[BuildingType.Palace].baseCost,
+      costMultiplier: BUILDING_CONFIG[BuildingType.Palace].costMultiplier,
+    },
   } as any,
 
   storageCaps: {
+    // Era 1 Resources
     food: new Decimal(100),
     wood: new Decimal(100),
     skin: new Decimal(50),
@@ -210,6 +398,13 @@ export const createBuildingsSlice: StateCreator<
     meat: new Decimal(30),
     curedMeat: new Decimal(100),
     tradition: new Decimal(1000),
+    // Era 2 Resources
+    gold: new Decimal(1000),
+    ironOre: new Decimal(500),
+    ironIngot: new Decimal(200),
+    science: new Decimal(1000),
+    culture: new Decimal(1000),
+    manpower: new Decimal(100),
   },
 
   // Get building count

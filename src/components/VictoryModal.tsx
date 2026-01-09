@@ -18,9 +18,9 @@ export const VictoryModal = memo(({ isOpen, onClose }: VictoryModalProps) => {
   };
 
   const handleNextEra = () => {
-    alert('Phase 2: Kingdom Age - Coming Soon / 开发中');
+    // Advance to Era 2: Kingdom
+    gameActions.advanceToEra2();
     onClose();
-    gameActions.toggleGame();
   };
 
   return (
