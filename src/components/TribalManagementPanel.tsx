@@ -1,7 +1,7 @@
 import { memo, useState, useEffect } from 'react';
 import { Plus, Minus, Lightbulb } from 'lucide-react';
 import { gameActions, useGameStore } from '../store/useGameStore';
-import { JobType, ResourceType } from '../types/game';
+import { JobType, ResourceType, TechType } from '../types/game';
 import Decimal from 'decimal.js';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -28,7 +28,7 @@ const JOB_CONFIG = {
   [JobType.Stonecutter]: {
     name: '碎石工',
     icon: '⛏️',
-    description: '产出石料 (需解锁)',
+    description: '产出石料 (需打制石器)',
     baseRate: '0.1 石料/秒',
     resource: ResourceType.Stone,
     color: 'bg-gray-50 border-gray-200 dark:bg-gray-900/10 dark:border-gray-800',
@@ -41,12 +41,14 @@ const WorkerControl = memo(({
   isUnlocked,
   onAdd,
   onRemove,
+  idlePop,
 }: {
   jobType: JobType;
   count: Decimal;
   isUnlocked: boolean;
   onAdd: () => void;
   onRemove: () => void;
+  idlePop: Decimal;
 }) => {
   const config = JOB_CONFIG[jobType];
 
@@ -65,15 +67,15 @@ const WorkerControl = memo(({
             </div>
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {isUnlocked && <span>🔒 需要研究科技解锁</span>}
+            {!isUnlocked && <span>🔒 需要研究科技解锁</span>}
           </div>
         </div>
 
         <Button
           onClick={onAdd}
-          disabled={isUnlocked}
+          disabled={!isUnlocked || idlePop.lte(0)}
           variant="outline"
-          className="h-8 w-8 rounded-lg"
+          className="h-8 w-8 rounded-lg mr-2"
         >
           <Plus className="w-4 h-4" />
         </Button>
@@ -120,9 +122,9 @@ export const TribalManagementPanel = memo(() => {
     woodcutter: boolean;
     stonecutter: boolean;
   }>({
-    gatherer: false,
+    gatherer: true,
     woodcutter: true,
-    stonecutter: true,
+    stonecutter: false,
   });
 
   useEffect(() => {
@@ -150,9 +152,15 @@ export const TribalManagementPanel = memo(() => {
 
         setJobs(jobs);
 
-        const isGathererUnlocked = state.isJobUnlocked ? state.isJobUnlocked(JobType.Gatherer) : false;
-        const isWoodcutterUnlocked = state.isJobUnlocked ? state.isJobUnlocked(JobType.Woodcutter) : true;
-        const isStonecutterUnlocked = state.isJobUnlocked ? state.isJobUnlocked(JobType.Stonecutter) : true;
+        // Check job unlock status
+        // Gatherer: always unlocked
+        const isGathererUnlocked = true;
+
+        // Woodcutter: always unlocked
+        const isWoodcutterUnlocked = true;
+
+        // Stonecutter: requires FlintKnapping tech
+        const isStonecutterUnlocked = state.isTechResearched ? state.isTechResearched(TechType.FlintKnapping) : false;
 
         setUnlockedJobs({
           gatherer: isGathererUnlocked,
@@ -222,6 +230,7 @@ export const TribalManagementPanel = memo(() => {
             isUnlocked={unlockedJobs.gatherer}
             onAdd={() => handleAddWorker(JobType.Gatherer)}
             onRemove={() => handleRemoveWorker(JobType.Gatherer)}
+            idlePop={idlePop}
           />
 
           <WorkerControl
@@ -230,6 +239,7 @@ export const TribalManagementPanel = memo(() => {
             isUnlocked={unlockedJobs.woodcutter}
             onAdd={() => handleAddWorker(JobType.Woodcutter)}
             onRemove={() => handleRemoveWorker(JobType.Woodcutter)}
+            idlePop={idlePop}
           />
 
           <WorkerControl
@@ -238,6 +248,7 @@ export const TribalManagementPanel = memo(() => {
             isUnlocked={unlockedJobs.stonecutter}
             onAdd={() => handleAddWorker(JobType.Stonecutter)}
             onRemove={() => handleRemoveWorker(JobType.Stonecutter)}
+            idlePop={idlePop}
           />
         </div>
       </CardContent>

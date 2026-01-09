@@ -83,31 +83,33 @@ const ActionButton = memo(({
   action,
   onCooldown,
   remainingTime,
-  onClick
+  onClick,
+  canAfford = true
 }: {
   action: Action;
   onCooldown: boolean;
   remainingTime: string;
   onClick: () => void;
+  canAfford?: boolean;
 }) => {
   const Icon = action.icon;
 
   return (
     <button
       onClick={onClick}
-      disabled={onCooldown}
+      disabled={onCooldown || !canAfford}
       className={cn(
         'w-full p-4 rounded-lg transition-all shadow-sm relative overflow-hidden',
         'flex items-center gap-4',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         action.color,
-        !onCooldown && 'active:scale-95'  // 冷却时移除缩放效果
+        !onCooldown && canAfford && 'active:scale-95'  // 冷却或资源不足时移除缩放效果
       )}
     >
       {/* 图标和文本 */}
       <Icon className={cn(
         "w-8 h-8 flex-shrink-0 text-white",
-        onCooldown && "opacity-50"  // 冷却时图标半透明
+        (onCooldown || !canAfford) && "opacity-50"  // 冷却或资源不足时图标半透明
       )} />
       <div className="flex-1 text-left">
         <div className="text-lg font-bold text-white">{action.name}</div>
@@ -318,8 +320,10 @@ SpecialActionButton.displayName = 'SpecialActionButton';
 export const ActionPanel = memo(() => {
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
   const [remainingTimes, setRemainingTimes] = useState<Record<string, string>>({});
+  const [canAffordScout, setCanAffordScout] = useState(false);
+  const [canAffordFestival, setCanAffordFestival] = useState(false);
 
-  // 定时更新剩余冷却时间
+  // 定时更新剩余冷却时间和资源检查
   useEffect(() => {
     const interval = setInterval(() => {
       const newRemainingTimes: Record<string, string> = {};
@@ -337,6 +341,25 @@ export const ActionPanel = memo(() => {
       });
 
       setRemainingTimes(newRemainingTimes);
+
+      // Check if can afford scout (50 food)
+      const currentFood = gameActions.getResource ? gameActions.getResource(ResourceType.Food) : new Decimal(0);
+      const SCOUT_COST = new Decimal(50);
+      setCanAffordScout(currentFood.greaterThanOrEqualTo(SCOUT_COST));
+
+      // Check if can afford grand festival (500 food + 100 wood + 50 curedMeat)
+      const currentWood = gameActions.getResource ? gameActions.getResource(ResourceType.Wood) : new Decimal(0);
+      const currentCuredMeat = gameActions.getResource ? gameActions.getResource(ResourceType.CuredMeat) : new Decimal(0);
+      const FESTIVAL_COSTS = {
+        food: new Decimal(500),
+        wood: new Decimal(100),
+        curedMeat: new Decimal(50),
+      };
+      setCanAffordFestival(
+        currentFood.greaterThanOrEqualTo(FESTIVAL_COSTS.food) &&
+        currentWood.greaterThanOrEqualTo(FESTIVAL_COSTS.wood) &&
+        currentCuredMeat.greaterThanOrEqualTo(FESTIVAL_COSTS.curedMeat)
+      );
     }, 100);  // 每100ms更新一次
 
     return () => clearInterval(interval);
@@ -509,15 +532,26 @@ export const ActionPanel = memo(() => {
       <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">行动</h2>
 
       <div className="grid grid-cols-1 gap-4">
-        {Object.entries(ACTION_CONFIG).map(([key, action]) => (
-          <ActionButton
-            key={key}
-            action={action}
-            onCooldown={isOnCooldown(key)}
-            remainingTime={remainingTimes[key] || '0.0'}
-            onClick={() => handleAction(key)}
-          />
-        ))}
+        {Object.entries(ACTION_CONFIG).map(([key, action]) => {
+          // Check if action can be afforded based on resource requirements
+          let actionCanAfford = true;
+          if (key === 'scout') {
+            actionCanAfford = canAffordScout;
+          } else if (key === 'grandFestival') {
+            actionCanAfford = canAffordFestival;
+          }
+
+          return (
+            <ActionButton
+              key={key}
+              action={action}
+              onCooldown={isOnCooldown(key)}
+              remainingTime={remainingTimes[key] || '0.0'}
+              onClick={() => handleAction(key)}
+              canAfford={actionCanAfford}
+            />
+          );
+        })}
 
         {/* Council Ground Button */}
         <CouncilGroundButton />
